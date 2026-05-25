@@ -4098,7 +4098,7 @@ function setupLogin() {
                 return;
             }
             
-            syncBtn.textContent = '⏳ 저장 중...';
+            syncBtn.textContent = '⏳';
             syncBtn.style.background = 'rgba(245, 158, 11, 0.2)';
             syncBtn.style.borderColor = 'rgba(245, 158, 11, 0.4)';
             syncBtn.style.color = '#fbbf24';
@@ -4106,26 +4106,26 @@ function setupLogin() {
             try {
                 const success = await syncDataToGoogleDrive();
                 if (success) {
-                    syncBtn.textContent = '✅ 저장 완료!';
+                    syncBtn.textContent = '✅';
                     syncBtn.style.background = 'rgba(16, 185, 129, 0.2)';
                     syncBtn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
                     syncBtn.style.color = '#34d399';
                 } else {
-                    syncBtn.textContent = '❌ 저장 실패';
+                    syncBtn.textContent = '❌';
                     syncBtn.style.background = 'rgba(239, 68, 68, 0.2)';
                     syncBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
                     syncBtn.style.color = '#f87171';
                 }
             } catch (err) {
                 console.error(err);
-                syncBtn.textContent = '❌ 저장 실패';
+                syncBtn.textContent = '❌';
                 syncBtn.style.background = 'rgba(239, 68, 68, 0.2)';
                 syncBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
                 syncBtn.style.color = '#f87171';
             }
             
             setTimeout(() => {
-                syncBtn.innerHTML = '☁️ 저장';
+                syncBtn.innerHTML = '☁️';
                 syncBtn.style.background = 'rgba(59, 130, 246, 0.2)';
                 syncBtn.style.borderColor = 'rgba(59, 130, 246, 0.4)';
                 syncBtn.style.color = 'var(--neon-blue)';
@@ -4142,7 +4142,7 @@ function setupLogin() {
                 return;
             }
             
-            loadBtn.textContent = '⏳ 불러오는 중...';
+            loadBtn.textContent = '⏳';
             loadBtn.style.background = 'rgba(245, 158, 11, 0.2)';
             loadBtn.style.borderColor = 'rgba(245, 158, 11, 0.4)';
             loadBtn.style.color = '#fbbf24';
@@ -4150,26 +4150,26 @@ function setupLogin() {
             try {
                 const success = await loadDataFromGoogleDrive();
                 if (success) {
-                    loadBtn.textContent = '✅ 불러오기 완료!';
+                    loadBtn.textContent = '✅';
                     loadBtn.style.background = 'rgba(16, 185, 129, 0.2)';
                     loadBtn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
                     loadBtn.style.color = '#34d399';
                 } else {
-                    loadBtn.textContent = '❌ 불러오기 실패';
+                    loadBtn.textContent = '❌';
                     loadBtn.style.background = 'rgba(239, 68, 68, 0.2)';
                     loadBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
                     loadBtn.style.color = '#f87171';
                 }
             } catch (err) {
                 console.error(err);
-                loadBtn.textContent = '❌ 불러오기 실패';
+                loadBtn.textContent = '❌';
                 loadBtn.style.background = 'rgba(239, 68, 68, 0.2)';
                 loadBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
                 loadBtn.style.color = '#f87171';
             }
             
             setTimeout(() => {
-                loadBtn.innerHTML = '🔄 불러오기';
+                loadBtn.innerHTML = '🔄';
                 loadBtn.style.background = 'rgba(139, 92, 246, 0.2)';
                 loadBtn.style.borderColor = 'rgba(139, 92, 246, 0.4)';
                 loadBtn.style.color = 'var(--neon-purple)';

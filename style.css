@@ -2732,9 +2732,6 @@ body {
         -webkit-backdrop-filter: none !important;
         background: rgba(11, 15, 25, 0.95) !important;
     }
-    .navbar .tab-nav {
-        display: none !important; /* Hidden from top, moved to bottom */
-    }
     .market-status {
         display: none !important; /* Hide open status on small screens */
     }
@@ -2794,12 +2791,11 @@ body {
     }
     .user-profile .sync-btn, 
     .user-profile .load-btn {
-        padding: 4px 6px !important;
-        max-width: 28px !important;
-        overflow: hidden !important;
-        white-space: nowrap !important;
-        text-overflow: clip !important;
+        padding: 4px 8px !important;
+        width: 32px !important;
+        height: 28px !important;
         display: inline-flex !important;
+        align-items: center !important;
         justify-content: center !important;
         margin: 0 !important;
     }
