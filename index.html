@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script>
-        // Global Error Alert Catcher for early detection of syntax and initialization errors
+        // Global Error Log Catcher (Non-blocking console logs instead of alerts)
         window.onerror = function (message, source, lineno, colno, error) {
-            alert(`JS ERROR (Early Catch):\nMessage: ${message}\nSource: ${source}\nLine: ${lineno}\nColumn: ${colno}\nStack: ${error ? error.stack : 'N/A'}`);
+            console.error(`JS ERROR (Early Catch):\nMessage: ${message}\nSource: ${source}\nLine: ${lineno}\nColumn: ${colno}\nStack: ${error ? error.stack : 'N/A'}`);
             return false; // Let browser process/log it normally
         };
         window.onunhandledrejection = function (event) {
-            alert(`Unhandled Promise Rejection:\nReason: ${event.reason}`);
+            console.error(`Unhandled Promise Rejection:\nReason: ${event.reason}`);
         };
     </script>
     <title>StockPulse | Real-Time Market Dashboard</title>
@@ -21,7 +21,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial/dist/chartjs-chart-financial.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=1.0.3">
+    <link rel="stylesheet" href="style.css?v=1.0.4">
     <!-- Google API -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -1036,7 +1036,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="app.js?v=1.0.3"></script>
+    <script src="app.js?v=1.0.4"></script>
 
     <!-- Scroll to Top Button -->
     <button id="scroll-to-top-btn" class="scroll-to-top-btn" title="맨 위로 가기">▲</button>

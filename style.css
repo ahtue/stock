@@ -2737,6 +2737,16 @@ body {
    ========================================================================== */
 
 @media (max-width: 768px) {
+    /* 0. Disable heavy graphic effects (glow orbs and backdrop filters) to prevent WebView crashes/occlusions */
+    .background-effects {
+        display: none !important;
+    }
+
+    * {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
     /* 1. Body Padding Adjustments */
     body {
         padding-bottom: 75px !important; /* Avoid bottom tab bar overlap */

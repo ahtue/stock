@@ -1,10 +1,10 @@
-// Global Error Alert Catcher for debugging purposes
+// Global Error Log Catcher for debugging purposes
 window.onerror = function (message, source, lineno, colno, error) {
-    alert(`JS ERROR: ${message}\nSource: ${source}\nLine: ${lineno}\nColumn: ${colno}\nStack: ${error ? error.stack : 'N/A'}`);
+    console.error(`JS ERROR: ${message}\nSource: ${source}\nLine: ${lineno}\nColumn: ${colno}\nStack: ${error ? error.stack : 'N/A'}`);
     return false; // Let browser process it as well
 };
 window.onunhandledrejection = function (event) {
-    alert(`Unhandled Rejection: ${event.reason}`);
+    console.error(`Unhandled Rejection: ${event.reason}`);
 };
 
 // Global state for time range
