@@ -6223,7 +6223,7 @@ function showExpertToast(title, body) {
     toast.className = 'toast-msg';
     toast.innerHTML = `
         <div class="toast-header">
-            <span>🔥 고수 Pick 포착!</span>
+            <span>🔥 알파스냅</span>
             <button class="toast-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
         </div>
         <div class="toast-body" style="font-size:0.85rem; line-height:1.4; pointer-events:auto;">
