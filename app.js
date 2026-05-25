@@ -2379,6 +2379,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }, { passive: true });
 
+    // ── Scroll to Top Button ──────────────────────────────────
+    const scrollTopBtn = document.getElementById('scroll-to-top-btn');
+    if (scrollTopBtn) {
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                scrollTopBtn.classList.add('visible');
+            } else {
+                scrollTopBtn.classList.remove('visible');
+            }
+        });
+
+        scrollTopBtn.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    }
+
     // ── Analyze Portfolio Button ───────────────────────────────
     document.getElementById('analyze-portfolio-btn').addEventListener('click', async () => {
         const activeItems = portfolio.filter(p => p.quantity > 0);
