@@ -1345,6 +1345,24 @@ body {
     border-radius: 4px;
 }
 
+@media (max-width: 1150px) {
+    .portfolio-tab-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        padding: 1.5rem;
+    }
+    .portfolio-summary-panel, 
+    .portfolio-list-panel {
+        max-height: none;
+        height: auto;
+        overflow: visible;
+    }
+    .portfolio-list {
+        height: auto;
+        overflow: visible;
+    }
+}
+
 /* Portfolio Item Row (Matching Screenshot style) */
 .portfolio-item {
     display: flex;
