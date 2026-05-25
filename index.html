@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        // Global Error Alert Catcher for early detection of syntax and initialization errors
+        window.onerror = function (message, source, lineno, colno, error) {
+            alert(`JS ERROR (Early Catch):\nMessage: ${message}\nSource: ${source}\nLine: ${lineno}\nColumn: ${colno}\nStack: ${error ? error.stack : 'N/A'}`);
+            return false; // Let browser process/log it normally
+        };
+        window.onunhandledrejection = function (event) {
+            alert(`Unhandled Promise Rejection:\nReason: ${event.reason}`);
+        };
+    </script>
+    <title>StockPulse | Real-Time Market Dashboard</title>
+    <meta name="description" content="Manage your stock portfolio and run advanced backtest analysis with StockPulse, a modern real-time stock market dashboard.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial/dist/chartjs-chart-financial.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google API -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <div class="background-effects">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+        <div class="glow-orb orb-3"></div>
+    </div>
+
+    <!-- Navbar -->
+    <header class="navbar">
+        <div class="logo">
+            <img src="logoBlack.png" alt="StockPulse Logo" class="logo-image">
+        </div>
+
+        <!-- Tab Navigation -->
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="stocks" id="tab-btn-stocks">
+                <span class="tab-icon">📈</span>
+                <span>Stock Dashboard</span>
+            </button>
+            <button class="tab-btn" data-tab="portfolio" id="tab-btn-portfolio">
+                <span class="tab-icon">💼</span>
+                <span>Portfolio</span>
+            </button>
+            <button class="tab-btn" data-tab="recommend" id="tab-btn-recommend" style="display: none;">
+                <span class="tab-icon">⭐</span>
+                <span>추천 포트폴리오</span>
+            </button>
+            <button class="tab-btn" data-tab="expert" id="tab-btn-expert">
+                <span class="tab-icon">🔥</span>
+                <span>고수 Pick</span>
+            </button>
+        </nav>
+
+        <div class="nav-right">
+            <div class="market-status">
+                <span class="status-indicator"></span> Market Open
+            </div>
+            <button class="glass-btn login-btn" id="login-btn">
+                <span class="btn-icon">👤</span>
+                <span class="btn-text">Login</span>
+            </button>
+            <div class="user-profile" id="user-profile" style="display: none;">
+                <div class="user-avatar">JD</div>
+                <span class="user-name">John Doe</span>
+                <button class="sync-btn" id="sync-btn" title="구글 드라이브에 동기화/저장" style="background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); color: var(--neon-blue); padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-left: 10px; display: inline-flex; align-items: center; gap: 4px;">☁️ 저장</button>
+                <button class="load-btn" id="load-btn" title="구글 드라이브에서 데이터 불러오기" style="background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.4); color: var(--neon-purple); padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-left: 6px; display: inline-flex; align-items: center; gap: 4px;">🔄 불러오기</button>
+                <button class="logout-btn" id="logout-btn" title="Logout">🚪</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Stocks Tab Toolbar (search + chart controls) -->
+    <div class="stocks-toolbar" id="stocks-toolbar">
+        <div class="search-container">
+            <input type="text" id="ticker-input" placeholder="Enter Ticker (e.g., AAPL or 005930)" autocomplete="off" style="min-width: 250px;">
+            <button id="search-code-btn" title="종목코드 검색">🔍 검색</button>
+            <button id="add-chart-btn">Add Chart</button>
+        </div>
+        <div class="toolbar-controls">
+            <div class="time-range-controls">
+                <button class="range-btn" data-range="1h">1H</button>
+                <button class="range-btn" data-range="1d">1D</button>
+                <button class="range-btn" data-range="1w">1W</button>
+                <button class="range-btn" data-range="1mo">1M</button>
+                <button class="range-btn active" data-range="6mo">6M</button>
+                <button class="range-btn" data-range="1y">1Y</button>
+                <button class="range-btn" data-range="3y">3Y</button>
+                <button class="range-btn" data-range="5y">5Y</button>
+            </div>
+            <div class="chart-type-controls">
+                <button class="type-btn active" data-type="line">Line</button>
+                <button class="type-btn" data-type="candlestick">Candle</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Tab: Stock Dashboard ── -->
+    <div class="tab-content active" id="tab-stocks">
+        <main class="dashboard-container">
+            <!-- KOSPI -->
+            <div class="glass-card chart-card" data-key="kospi" draggable="true">
+                <div class="card-header">
+                    <div class="header-left">
+                        <h2>KOSPI</h2>
+                        <span class="company-name" id="kospi-name">KOSPI Composite Index</span>
+                    </div>
+                    <div class="header-right">
+                        <div class="price-container">
+                            <span class="price" id="kospi-price">--</span>
+                            <span class="change positive" id="kospi-change">--</span>
+                        </div>
+                        <button class="remove-chart-btn" onclick="event.stopPropagation(); removeChart('kospi')" title="Remove Chart">&times;</button>
+                    </div>
+                </div>
+                <div class="chart-container"><canvas id="kospi-chart"></canvas></div>
+            </div>
+
+            <!-- KOSDAQ -->
+            <div class="glass-card chart-card" data-key="kosdaq" draggable="true">
+                <div class="card-header">
+                    <div class="header-left">
+                        <h2>KOSDAQ</h2>
+                        <span class="company-name" id="kosdaq-name">KOSDAQ Composite Index</span>
+                    </div>
+                    <div class="header-right">
+                        <div class="price-container">
+                            <span class="price" id="kosdaq-price">--</span>
+                            <span class="change negative" id="kosdaq-change">--</span>
+                        </div>
+                        <button class="remove-chart-btn" onclick="event.stopPropagation(); removeChart('kosdaq')" title="Remove Chart">&times;</button>
+                    </div>
+                </div>
+                <div class="chart-container"><canvas id="kosdaq-chart"></canvas></div>
+            </div>
+
+            <!-- NASDAQ -->
+            <div class="glass-card chart-card" data-key="nasdaq" draggable="true">
+                <div class="card-header">
+                    <div class="header-left">
+                        <h2>NASDAQ</h2>
+                        <span class="company-name" id="nasdaq-name">NASDAQ Composite</span>
+                    </div>
+                    <div class="header-right">
+                        <div class="price-container">
+                            <span class="price" id="nasdaq-price">--</span>
+                            <span class="change positive" id="nasdaq-change">--</span>
+                        </div>
+                        <button class="remove-chart-btn" onclick="event.stopPropagation(); removeChart('nasdaq')" title="Remove Chart">&times;</button>
+                    </div>
+                </div>
+                <div class="chart-container"><canvas id="nasdaq-chart"></canvas></div>
+            </div>
+
+            <!-- S&P 500 -->
+            <div class="glass-card chart-card" data-key="sp500" draggable="true">
+                <div class="card-header">
+                    <div class="header-left">
+                        <h2>S&P 500</h2>
+                        <span class="company-name" id="sp500-name">S&P 500 Index</span>
+                    </div>
+                    <div class="header-right">
+                        <div class="price-container">
+                            <span class="price" id="sp500-price">--</span>
+                            <span class="change positive" id="sp500-change">--</span>
+                        </div>
+                        <button class="remove-chart-btn" onclick="event.stopPropagation(); removeChart('sp500')" title="Remove Chart">&times;</button>
+                    </div>
+                </div>
+                <div class="chart-container"><canvas id="sp500-chart"></canvas></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ── Tab: Portfolio Analysis ── -->
+    <div class="tab-content" id="tab-portfolio">
+        <div class="portfolio-tab-layout">
+
+            <!-- Left: Portfolio Summary Dashboard -->
+            <div class="portfolio-summary-panel glass-card">
+                <div class="summary-total-section">
+                    <span class="summary-label">포트폴리오 총 평가 자산 (TOTAL)</span>
+                    <div class="summary-total-val-row">
+                        <span id="portfolio-total-krw" class="total-value">0</span>
+                        <span class="total-unit">KRW</span>
+                    </div>
+                </div>
+                
+                <div class="summary-daily-change-section">
+                    <div class="daily-change-card">
+                        <span class="summary-label">일일 증 평가 손익</span>
+                        <span id="portfolio-total-change" class="change-value">--</span>
+                    </div>
+                </div>
+
+                <div class="summary-info-grid">
+                    <div class="info-card">
+                        <span class="info-card-label">보유 자산 수</span>
+                        <span id="portfolio-asset-count" class="info-card-value">0 개 종목</span>
+                    </div>
+                    <div class="info-card">
+                        <span class="info-card-label">최대 비중 자산</span>
+                        <span id="portfolio-max-asset" class="info-card-value">--</span>
+                    </div>
+                </div>
+
+                <div class="summary-chart-section">
+                    <span class="summary-label">보유 자산 비중 비율</span>
+                    <div class="donut-chart-container">
+                        <canvas id="portfolio-donut-chart"></canvas>
+                    </div>
+                </div>
+
+
+
+                <!-- ── Portfolio Snapshot Section ── -->
+                <div class="snapshot-section" style="border-top: 1px dashed var(--card-border); padding-top: 1rem; margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="summary-label" style="font-weight: 700;">포트폴리오 스냅샷</span>
+                        <button id="create-snapshot-btn" class="glass-btn primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; font-weight: 700; background: var(--neon-purple); border-color: var(--neon-purple); display: inline-flex; align-items: center; gap: 4px;">📷 스냅샷 저장</button>
+                    </div>
+                    <div id="snapshot-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 180px; overflow-y: auto;">
+                        <div style="text-align: center; color: var(--text-secondary); padding: 1.5rem 0; font-size: 0.8rem;">저장된 스냅샷이 없습니다.</div>
+                    </div>
+                    <button id="view-all-snapshots-btn" class="glass-btn secondary" style="width: 100%; font-size: 0.8rem; padding: 0.45rem; font-weight: 600; text-align: center;">📁 전체보기</button>
+                </div>
+            </div>
+
+            <!-- Right: Asset Management List -->
+            <div class="portfolio-list-panel glass-card">
+                <div class="portfolio-list-header">
+                    <div class="header-title-area">
+                        <h2>보유 수량 및 자산 관리 리스트</h2>
+                        <p class="header-subtitle">실시간 주가에 따른 나만의 자산 규모를 즉시 확인 및 수정합니다</p>
+                    </div>
+                    <div class="header-action-area">
+                        <button id="portfolio-recommend-btn" class="glass-btn secondary" style="display: inline-flex; align-items: center; gap: 4px;">
+                            ⭐ 추천 포트폴리오
+                        </button>
+                        <button id="portfolio-add-ticker-btn" class="glass-btn secondary">
+                            + 종목 추가
+                        </button>
+                        <button id="analyze-portfolio-btn" class="glass-btn primary run-btn">
+                            ▶ Run Analysis
+                        </button>
+                    </div>
+                </div>
+                <div class="portfolio-list" id="portfolio-list">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ── Tab: Recommended Portfolios ── -->
+    <div class="tab-content" id="tab-recommend" style="display: none;"></div>
+
+    <!-- ── Tab: Expert Picks ── -->
+    <div class="tab-content" id="tab-expert">
+        <div class="expert-container" style="max-width: 1600px; margin: 0 auto; padding: 2rem 2.5rem; display: flex; flex-direction: column; gap: 2rem;">
+            <div class="expert-header" style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; flex-wrap: wrap;">
+                <div>
+                    <h2 style="font-size: 1.8rem; font-weight: 800; background: linear-gradient(135deg, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">고수들의 투자 원칙 스크리너</h2>
+                    <p class="expert-subtitle" style="color: var(--text-secondary); margin-top: 0.25rem; font-size: 0.95rem;">시장의 돈이 몰리는 주도주와 정배열 추세, 지지/저항 라인 및 우량 펀더멘털 스크리닝</p>
+                </div>
+                <button id="expert-guide-btn" class="glass-btn" style="padding: 0.6rem 1.2rem; font-weight: 700; font-size: 0.9rem; border-color: rgba(59, 130, 246, 0.4); color: var(--neon-blue); display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                    <span>📖 설명보기</span>
+                </button>
+            </div>
+
+            <!-- 4대 원칙 요약 설명 -->
+            <div class="expert-principles-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+                <div class="principle-card glass-card" style="padding: 1.25rem;" id="principle-card-1">
+                    <div class="principle-header" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <span class="principle-icon" style="font-size: 1.5rem;" id="principle-icon-1">🚀</span>
+                        <h3 style="font-size: 1.05rem; font-weight: 700; color: #fff;" id="principle-title-1">① 주도주 & 돌파</h3>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin: 0;" id="principle-desc-1">거래대금이 최근 20일 평균 대비 500% 이상 폭발하고, 당일 가격이 20일 전고점을 상향 돌파하는 타이밍을 포착합니다.</p>
+                </div>
+                <div class="principle-card glass-card" style="padding: 1.25rem;" id="principle-card-2">
+                    <div class="principle-header" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <span class="principle-icon" style="font-size: 1.5rem;" id="principle-icon-2">📈</span>
+                        <h3 style="font-size: 1.05rem; font-weight: 700; color: #fff;" id="principle-title-2">② 추세추종 & 정배열</h3>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin: 0;" id="principle-desc-2">5일 > 20일 > 60일 > 120일 이동평균선이 정배열된 상승 추세에서만 진입하며, 이격도가 110% 이상 과열된 경우는 보류합니다.</p>
+                </div>
+                <div class="principle-card glass-card" style="padding: 1.25rem;" id="principle-card-3">
+                    <div class="principle-header" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <span class="principle-icon" style="font-size: 1.5rem;" id="principle-icon-3">🎯</span>
+                        <h3 style="font-size: 1.05rem; font-weight: 700; color: #fff;" id="principle-title-3">③ 지지 & 저항</h3>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin: 0;" id="principle-desc-3">가장 매매가 치열했던 피봇 라인(지지선/저항선)을 자동 산출하고, -3% 또는 5일 신저가 기준의 자동 손절선을 제공합니다.</p>
+                </div>
+                <div class="principle-card glass-card" style="padding: 1.25rem;" id="principle-card-4">
+                    <div class="principle-header" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <span class="principle-icon" style="font-size: 1.5rem;" id="principle-icon-4">💎</span>
+                        <h3 style="font-size: 1.05rem; font-weight: 700; color: #fff;" id="principle-title-4">④ 우량 펀더멘털</h3>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin: 0;" id="principle-desc-4">기업 체력 검증을 위해 영업이익률 10% 이상, 분기 매출 성장률(YoY) 20% 이상인 종목을 기본적 분석 필터로 선별합니다.</p>
+                </div>
+                <div class="principle-card glass-card" style="padding: 1.25rem; display: none;" id="principle-card-5">
+                    <div class="principle-header" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <span class="principle-icon" style="font-size: 1.5rem;" id="principle-icon-5">💵</span>
+                        <h3 style="font-size: 1.05rem; font-weight: 700; color: #fff;" id="principle-title-5">⑤ 비용/배율</h3>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin: 0;" id="principle-desc-5">운용 수수료가 낮을수록 고득점이며, 배당형 자산의 경우 배당수익률을 적극 반영합니다.</p>
+                </div>
+            </div>
+
+            <!-- 스크리너 컨트롤 및 진행 상황 -->
+            <div class="screener-control-card glass-card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
+                <div class="screener-controls-row" style="display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+                    <div class="screener-select-group" style="display: flex; align-items: center; gap: 0.75rem;">
+                        <label for="screener-group-select" style="font-size: 0.95rem; font-weight: 600; color: var(--text-secondary);">스크리닝 대상 :</label>
+                        <select id="screener-group-select" class="glass-select" style="min-width: 200px; padding: 0.6rem 1rem; font-weight: 600;">
+                            <option value="ALL">전체 인기 종목 (~70개)</option>
+                            <option value="KS">코스피 인기주 (KOSPI)</option>
+                            <option value="KQ">코스닥 인기주 (KOSDAQ)</option>
+                            <option value="US">미국 주요주 (US)</option>
+                            <option value="PORTFOLIO">내 포트폴리오 종목</option>
+                            <option value="ETF_ALL">전체 ETF군 스코어링</option>
+                            <option value="ETF_INDEX">지수 추정형 ETF</option>
+                            <option value="ETF_THEME">섹터/테마형 ETF</option>
+                            <option value="ETF_INCOME">배당/인컴형 ETF</option>
+                            <option value="VALUEUP_HIGH_DIV">한국형 밸류업 & 고배당 스크리닝</option>
+                        </select>
+                    </div>
+                    <button id="run-screener-btn" class="glass-btn primary" style="font-weight: 700;">🔥 고수 Pick 스크리닝 시작</button>
+                </div>
+
+                <!-- 진행 바 (숨김 상태 기본) -->
+                <div class="screener-progress-wrap" id="screener-progress-wrap" style="display: none; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--card-border); padding: 1.25rem; border-radius: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                        <span class="screener-status-text" id="screener-status-text" style="font-weight: 600; color: #fff;">스크리닝 준비 중...</span>
+                        <span class="screener-percentage" id="screener-percentage" style="color: var(--neon-blue); font-weight: 700; font-family: monospace;">0%</span>
+                    </div>
+                    <div class="screener-progress-bar-bg" style="background: rgba(255,255,255,0.05); height: 10px; border-radius: 99px; overflow: hidden; margin-bottom: 0.5rem;">
+                        <div class="screener-progress-bar" id="screener-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple)); border-radius: 99px; transition: width 0.1s ease;"></div>
+                    </div>
+                    <div class="screener-detail-text" id="screener-detail-text" style="font-size: 0.8rem; color: var(--text-secondary); font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+                </div>
+            </div>
+
+            <!-- 스크리닝 결과 리스트 -->
+            <div class="screener-results-card glass-card" style="padding: 1.5rem;">
+                <div class="results-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+                    <h3 style="font-size: 1.2rem; font-weight: 700; color: #fff;">스크리닝 결과 <span class="results-count" id="screener-results-count" style="color: var(--neon-blue); font-weight: 800; font-family: monospace; margin-left: 0.25rem;">(0)</span></h3>
+                    <div class="results-legend" id="screener-results-legend" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <span class="legend-badge p1" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); color: var(--neon-blue); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">① 주도주돌파</span>
+                        <span class="legend-badge p2" style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); color: var(--neon-purple); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">② 이평정배열</span>
+                        <span class="legend-badge p3" style="background: rgba(236, 72, 153, 0.1); border: 1px solid rgba(236, 72, 153, 0.3); color: var(--neon-pink); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">③ 지지선돌파</span>
+                        <span class="legend-badge p4" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--positive); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">④ 실적패스</span>
+                    </div>
+                </div>
+                <div class="table-container" style="overflow-x: auto; background: rgba(0, 0, 0, 0.15); border: 1px solid var(--card-border); border-radius: 0.75rem;">
+                    <table class="expert-results-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                        <thead>
+                            <tr style="background: rgba(255, 255, 255, 0.03); border-bottom: 1px solid var(--card-border);">
+                                <th style="padding: 1rem; color: var(--text-secondary); font-weight: 600;">종목명</th>
+                                <th style="padding: 1rem; color: var(--text-secondary); font-weight: 600;">현재가</th>
+                                <th style="padding: 1rem; color: var(--text-secondary); font-weight: 600;">대비 (수익률)</th>
+                                <th style="padding: 1rem; color: var(--text-secondary); font-weight: 600;">조건 매칭 현황</th>
+                                <th style="padding: 1rem; color: var(--text-secondary); font-weight: 600; text-align: center;">통과 등급</th>
+                                <th style="padding: 1rem; color: var(--text-secondary); font-weight: 600; text-align: center;">상세 분석</th>
+                            </tr>
+                        </thead>
+                        <tbody id="screener-results-list">
+                            <tr>
+                                <td colspan="6" class="table-empty" style="padding: 4rem 1rem; text-align: center; color: var(--text-secondary);">
+                                    <div class="empty-state-info">
+                                        <span class="empty-icon" style="font-size: 2.5rem; display: block; margin-bottom: 1rem; opacity: 0.5;">🔍</span>
+                                        <p style="margin: 0; font-size: 0.95rem;">위의 "고수 Pick 스크리닝 시작" 버튼을 클릭하면 실시간 기술/기본적 분석이 진행됩니다.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Stock Chart Detail Modal (click on a card) ── -->
+    <div class="modal-overlay" id="chart-modal">
+        <div class="modal-content glass-card">
+            <button class="close-btn" id="modal-close-btn">&times;</button>
+            <div class="card-header modal-header">
+                <div class="modal-title-group">
+                    <h2 id="modal-title">Ticker</h2>
+                    <span class="company-name" id="modal-company-name">Company Name</span>
+                </div>
+                <div class="modal-price-container">
+                    <span class="price" id="modal-price">--</span>
+                    <span class="change" id="modal-change">--</span>
+                </div>
+            </div>
+            <div class="chart-container modal-chart-container">
+                <canvas id="modal-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Login Modal ── -->
+    <div class="modal-overlay" id="login-modal">
+        <div class="modal-content glass-card login-modal-content">
+            <button class="close-btn" id="login-modal-close-btn">&times;</button>
+            <div class="login-header">
+                <h2>Welcome Back</h2>
+                <p>Sync your portfolio with Google Drive</p>
+            </div>
+            
+            <div class="google-login-section">
+                <div id="google-signin-btn">
+                    <button class="social-btn google-btn loading" disabled>
+                        <span>Loading Google Sign-In...</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Signup Suggestion -->
+            <div class="signup-suggestion" style="margin-top: 1.5rem; text-align: center; font-size: 0.85rem; color: var(--text-secondary);">
+                아직 구글 회원이 아니라면? 
+                <a href="https://accounts.google.com/signup" target="_blank" style="color: var(--neon-blue); text-decoration: underline; font-weight: 600; margin-left: 5px;">구글 회원가입</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Analysis Report Modal ── -->
+    <div class="modal-overlay" id="report-modal">
+        <div class="modal-content glass-card report-modal-content">
+            <button class="close-btn" id="report-modal-close-btn">&times;</button>
+            <div class="report-header">
+                <div class="report-title-group">
+                    <span class="report-badge">KOSPI Analysis</span>
+                    <h2 id="report-stock-name">Stock Name</h2>
+                    <span id="report-stock-ticker" class="ticker-badge">TICKER</span>
+                </div>
+                <div class="report-date" id="report-date">2026-05-16</div>
+            </div>
+            
+            <div class="report-body">
+                <div class="report-section">
+                    <h3><span class="section-icon">📝</span> Analyst Summary</h3>
+                    <p id="report-summary">Loading analysis summary...</p>
+                </div>
+                
+                <div class="report-section">
+                    <h3><span class="section-icon">🎯</span> Price Targets & Recommendations</h3>
+                    <div class="recommendation-table-wrap">
+                        <table class="recommendation-table">
+                            <thead>
+                                <tr>
+                                    <th>Securities Firm</th>
+                                    <th>Rating</th>
+                                    <th>Target Price</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recommendation-list">
+                                <!-- Injected by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="report-section">
+                    <h3><span class="section-icon">💡</span> Investment Points</h3>
+                    <ul class="investment-points" id="investment-points">
+                        <!-- Injected by JS -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Comparison Modal ── -->
+    <div class="modal-overlay" id="comparison-modal">
+        <div class="modal-content glass-card comparison-modal-content" style="max-width: 800px; width: 90%; height: auto; max-height: 90vh; overflow-y: auto;">
+            <button class="close-btn" id="comparison-modal-close-btn">&times;</button>
+            <div class="report-header" style="margin-bottom: 20px;">
+                <div class="report-title-group">
+                    <span class="report-badge" style="background: rgba(139, 92, 246, 0.2); color: #a78bfa;">종목 비교 분석</span>
+                    <h2 id="comparison-title" style="margin-top: 5px; margin-bottom: 0;">Stock Comparison</h2>
+                </div>
+            </div>
+            
+            <!-- Price Comparison Summary Boxes -->
+            <div class="comparison-summary-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <!-- Stock 1 -->
+                <div class="glass-card" id="comp-stock1-box" style="padding: 15px; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; background: rgba(255,255,255,0.02);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px;">
+                        <h3 id="comp-stock1-name" style="display: none;">Stock 1</h3>
+                        <select id="comp-stock1-select" class="comparison-select"></select>
+                        <span id="comp-stock1-ticker" class="ticker-badge" style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">TICKER1</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #94a3b8;">
+                            <span>시작 가격 (Start)</span>
+                            <span id="comp-stock1-start-price">--</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #94a3b8;">
+                            <span>최종 가격 (End)</span>
+                            <span id="comp-stock1-end-price">--</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 0.95rem; margin-top: 5px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 5px;">
+                            <span>수익률 (Growth)</span>
+                            <span id="comp-stock1-growth">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stock 2 -->
+                <div class="glass-card" id="comp-stock2-box" style="padding: 15px; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; background: rgba(255,255,255,0.02);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px;">
+                        <h3 id="comp-stock2-name" style="display: none;">Stock 2</h3>
+                        <select id="comp-stock2-select" class="comparison-select"></select>
+                        <span id="comp-stock2-ticker" class="ticker-badge" style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">TICKER2</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #94a3b8;">
+                            <span>시작 가격 (Start)</span>
+                            <span id="comp-stock2-start-price">--</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #94a3b8;">
+                            <span>최종 가격 (End)</span>
+                            <span id="comp-stock2-end-price">--</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 0.95rem; margin-top: 5px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 5px;">
+                            <span>수익률 (Growth)</span>
+                            <span id="comp-stock2-growth">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparison Chart Canvas -->
+            <div class="chart-container" style="height: 380px; position: relative;">
+                <canvas id="comparison-chart"></canvas>
+            </div>
+            
+            <div style="margin-top: 15px; text-align: center; font-size: 0.8rem; color: #64748b;">
+                * 두 종목의 성과를 직관적으로 비교하기 위해 <strong>수익률(%) 기준으로 정규화</strong>하여 표시합니다.
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Stock Search Modal ── -->
+    <div class="modal-overlay" id="search-code-modal">
+        <div class="modal-content glass-card" style="max-width: 500px; width: 90%; max-height: 85vh; display: flex; flex-direction: column; padding: 25px; gap: 0;">
+            <button class="close-btn" id="search-code-modal-close-btn" style="position: absolute; right: 20px; top: 20px;">&times;</button>
+            <div class="report-header" style="margin-bottom: 20px;">
+                <div class="report-title-group">
+                    <span class="report-badge" style="background: rgba(59, 130, 246, 0.2); color: var(--neon-blue); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">종목 검색</span>
+                    <h2 style="margin-top: 8px; margin-bottom: 0; font-size: 1.5rem; color: #fff;">종목코드 검색</h2>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 8px; margin-bottom: 15px; width: 100%;">
+                <input type="text" id="modal-search-input" placeholder="종목명 또는 심볼 입력 (예: 삼성전자, Apple, NVDA)" style="flex: 1; padding: 0.6rem 1rem; border-radius: 0.5rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); color: #fff; outline: none; font-size: 0.9rem;" autocomplete="off">
+                <button id="modal-search-submit-btn" style="background: var(--neon-blue); color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; font-size: 0.9rem; transition: background-color 0.3s;">검색</button>
+            </div>
+
+            <!-- Search Results Container -->
+            <div id="modal-search-results" style="flex: 1; overflow-y: auto; max-height: 48vh; border-radius: 8px; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.05); padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 150px;">
+                <div style="text-align: center; color: #64748b; padding: 40px 10px; font-size: 0.9rem;">
+                    종목명이나 심볼을 입력하고 검색 버튼을 누르세요.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Tab: Expert Picks Detail Modal ── -->
+    <div class="modal-overlay" id="expert-detail-modal">
+        <div class="modal-content glass-card expert-detail-modal-content" style="max-width: 850px; width: 90%; height: 85vh; max-height: 85vh; display: flex; flex-direction: column; padding: 2.5rem; position: relative;">
+            <button class="close-btn" id="expert-detail-modal-close-btn">&times;</button>
+            <div class="report-header" style="margin-bottom: 2rem; border-bottom: 1px solid var(--card-border); padding-bottom: 1.5rem; display: flex; flex-direction: column; align-items: stretch; gap: 1rem;">
+                <div class="report-title-group" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; width: 100%;">
+                    <div>
+                        <span class="report-badge" style="background: rgba(236, 72, 153, 0.2); color: var(--neon-pink); font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700; text-transform: uppercase;">고수 심층 분석</span>
+                        <h2 id="expert-detail-stock-name" style="font-size: 1.8rem; font-weight: 800; margin: 8px 0 4px 0;">삼성전자</h2>
+                        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 4px;">
+                            <span id="expert-detail-stock-ticker" class="ticker-badge">005930.KS</span>
+                            <span id="expert-detail-stock-price" style="font-size: 1.35rem; font-weight: 700; color: #fff; font-family: monospace;">-</span>
+                            <span id="expert-detail-stock-change" class="change">-</span>
+                        </div>
+                    </div>
+                    <div id="expert-detail-grade-container" style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.35rem;">
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">통과 등급</span>
+                        <div id="expert-detail-grade-badge-area">
+                            <span class="grade-badge super">★ 초고수 추천</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="report-date" id="expert-detail-date" style="font-size: 0.85rem; color: var(--text-secondary); border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 0.75rem;">실시간 스캔 분석 리포트</div>
+                <div style="border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 0.75rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap;">고수 조건 매칭 현황 :</div>
+                    <div id="expert-detail-criteria-badges" class="criteria-container" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <span class="criteria-badge p1 inactive">주도주돌파</span>
+                        <span class="criteria-badge p2 inactive">이평정배열</span>
+                        <span class="criteria-badge p3 inactive">지지유지</span>
+                        <span class="criteria-badge p4 inactive">실적패스</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="report-body" style="display: flex; flex-direction: column; gap: 2rem; overflow-y: auto; flex: 1; padding-right: 0.5rem;">
+                <div id="stock-report-details" style="display: flex; flex-direction: column; gap: 2rem; width: 100%;">
+                <!-- 1. Technical Signal Analysis -->
+                <div class="report-section">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span class="section-icon">📊</span> 기술적 시그널 현황
+                        <div class="info-tooltip-container">
+                            <span class="info-tooltip-trigger">?</span>
+                            <div class="info-tooltip-content">
+                                <strong>기술적 시그널 현황 설명:</strong><br>
+                                • <strong>이동평균선 배열</strong>: 주가가 상승 흐름을 타고 있는지(5일 > 20일 > 60일 > 120일선 정배열)를 분석합니다.<br>
+                                • <strong>이격도</strong>: 20일 이동평균선 대비 현재 주가의 괴리율입니다. 110%를 넘으면 단기 과열로 판정하여 추격 매수를 자제합니다.<br>
+                                • <strong>거래대금 급증율</strong>: 최근 20일 평균 거래량 대비 당일 거래량이 얼마나 급증했는지 측정합니다 (500% 이상일 때 강한 주도주).<br>
+                                • <strong>전고점 돌파</strong>: 현재가가 최근 20일간의 최고가를 넘어서며 신규 상승 추세를 시작했는지 확인합니다.
+                            </div>
+                        </div>
+                    </h3>
+                    <div class="expert-detail-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                        <div class="detail-stat-box" style="background: rgba(0,0,0,0.2); border: 1px solid var(--card-border); border-radius: 0.75rem; padding: 0.75rem 1rem;">
+                            <div class="stat-label" style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.35rem; font-weight: 500;">이동평균선 배열</div>
+                            <div class="stat-value" id="detail-ma-alignment" style="font-size: 1rem; font-weight: 700; color: #fff;">-</div>
+                        </div>
+                        <div class="detail-stat-box" style="background: rgba(0,0,0,0.2); border: 1px solid var(--card-border); border-radius: 0.75rem; padding: 0.75rem 1rem;">
+                            <div class="stat-label" style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.35rem; font-weight: 500;">이격도 (20일선 기준)</div>
+                            <div class="stat-value" id="detail-disparity" style="font-size: 1rem; font-weight: 700; color: #fff;">-</div>
+                        </div>
+                        <div class="detail-stat-box" style="background: rgba(0,0,0,0.2); border: 1px solid var(--card-border); border-radius: 0.75rem; padding: 0.75rem 1rem;">
+                            <div class="stat-label" style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.35rem; font-weight: 500;">거래대금 급증율 (20일 평균 대비)</div>
+                            <div class="stat-value" id="detail-volume-pop" style="font-size: 1rem; font-weight: 700; color: #fff;">-</div>
+                        </div>
+                        <div class="detail-stat-box" style="background: rgba(0,0,0,0.2); border: 1px solid var(--card-border); border-radius: 0.75rem; padding: 0.75rem 1rem;">
+                            <div class="stat-label" style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.35rem; font-weight: 500;">20일 전고점 돌파 여부</div>
+                            <div class="stat-value" id="detail-breakout" style="font-size: 1rem; font-weight: 700; color: #fff;">-</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 2. Support and Resistance (Pivot) -->
+                <div class="report-section">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span class="section-icon">🎯</span> 지지 및 저항선 (피봇 분석)
+                        <div class="info-tooltip-container">
+                            <span class="info-tooltip-trigger">?</span>
+                            <div class="info-tooltip-content">
+                                <strong>피봇 지지 및 저항선 설명:</strong><br>
+                                전일 주가의 고가, 저가, 종가를 바탕으로 산출된 단기 심리 가격대입니다.<br>
+                                • <strong>피봇 기준선 (PP)</strong>: 당일 방향성을 가르는 기준점입니다.<br>
+                                • <strong>저항선 (R1, R2)</strong>: 주가가 상승할 때 매도세가 쏟아지기 쉬운 저항선입니다. 목표가 설정 시 참고합니다.<br>
+                                • <strong>지지선 (S1, S2)</strong>: 주가가 하락할 때 지지해 줄 확률이 높은 심리적 지지선입니다. 추가매수 시 참고합니다.
+                            </div>
+                        </div>
+                    </h3>
+                    <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.4;">전일 캔들 가격 기준 계산된 피봇 핵심 가격대입니다.</p>
+                    <div class="pivot-visualization-container" style="background: rgba(0, 0, 0, 0.25); border-radius: 0.75rem; padding: 1.25rem; border: 1px solid var(--card-border); display: flex; flex-direction: column; gap: 0.65rem;">
+                        <div class="pivot-line-row" style="display: flex; justify-content: space-between; font-size: 0.88rem; color: #f43f5e; font-weight: 600;">
+                            <span>2차 저항선 (R2)</span>
+                            <span id="pivot-r2" style="font-family: monospace;">-</span>
+                        </div>
+                        <div class="pivot-line-row" style="display: flex; justify-content: space-between; font-size: 0.88rem; color: #fda4af;">
+                            <span>1차 저항선 (R1)</span>
+                            <span id="pivot-r1" style="font-family: monospace;">-</span>
+                        </div>
+                        <div class="pivot-line-row" style="display: flex; justify-content: space-between; font-size: 0.95rem; color: #fff; font-weight: 700; border-top: 1px dashed rgba(255,255,255,0.1); border-bottom: 1px dashed rgba(255,255,255,0.1); padding: 0.35rem 0;">
+                            <span>피봇 기준선 (PP)</span>
+                            <span id="pivot-pp" style="font-family: monospace;">-</span>
+                        </div>
+                        <div class="pivot-line-row" style="display: flex; justify-content: space-between; font-size: 0.88rem; color: #93c5fd;">
+                            <span>1차 지지선 (S1)</span>
+                            <span id="pivot-s1" style="font-family: monospace;">-</span>
+                        </div>
+                        <div class="pivot-line-row" style="display: flex; justify-content: space-between; font-size: 0.88rem; color: #3b82f6; font-weight: 600;">
+                            <span>2차 지지선 (S2)</span>
+                            <span id="pivot-s2" style="font-family: monospace;">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Safe Stop-Loss Setting -->
+                <div class="report-section">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span class="section-icon">🛡️</span> 고수들의 권장 손절선
+                        <div class="info-tooltip-container">
+                            <span class="info-tooltip-trigger">?</span>
+                            <div class="info-tooltip-content">
+                                <strong>권장 손절선 설명:</strong><br>
+                                예상과 달리 주가가 하락 흐름으로 돌아설 때 손실을 강제로 한정하기 위한 기준선입니다.<br>
+                                • <strong>매수 타점 대비 -3% 손절</strong>: 진입 시점 대비 손실이 3%에 도달하면 즉각 손절하여 리스크를 고정합니다.<br>
+                                • <strong>최근 5일 최저가 손절</strong>: 최근 5일간 지켜주었던 매수 지지 매물대 붕괴 시 추세 이탈로 보고 손절에 들어갑니다.
+                            </div>
+                        </div>
+                    </h3>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                        <div class="stoploss-box" style="border: 1px solid rgba(239, 68, 68, 0.25); background: rgba(239, 68, 68, 0.04); padding: 12px 15px; border-radius: 8px;">
+                            <div style="font-size: 0.78rem; color: var(--negative); font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 0.25rem;">🛑 매수 타점 대비 -3% 손절</div>
+                            <div id="stoploss-pct" style="font-size: 1.1rem; font-weight: 800; color: #fff; margin-top: 6px; font-family: monospace;">-</div>
+                        </div>
+                        <div class="stoploss-box" style="border: 1px solid rgba(245, 158, 11, 0.25); background: rgba(245, 158, 11, 0.04); padding: 12px 15px; border-radius: 8px;">
+                            <div style="font-size: 0.78rem; color: #f59e0b; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 0.25rem;">⚠️ 최근 5일 최저가 손절</div>
+                            <div id="stoploss-low" style="font-size: 1.1rem; font-weight: 800; color: #fff; margin-top: 6px; font-family: monospace;">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Fundamental Assessment -->
+                <div class="report-section">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span class="section-icon">💎</span> 펀더멘털 핵심 정보
+                        <div class="info-tooltip-container">
+                            <span class="info-tooltip-trigger">?</span>
+                            <div class="info-tooltip-content">
+                                <strong>펀더멘털 핵심 정보 설명:</strong><br>
+                                기업의 기초 체력 및 사업 실적 검증용 조건입니다.<br>
+                                • <strong>연간 영업이익률</strong>: 매출에서 영업 비용을 뺀 이익률로, **10% 이상**일 때 장사를 안정적이고 마진 높게 하고 있음을 의미합니다.<br>
+                                • <strong>분기 매출 성장률 (YoY)</strong>: 최근 분기 매출액이 전년 동기 대비 얼마나 늘어났는지를 나타내며, **20% 이상** 고속 성장하는 주도기업인지 분석합니다.
+                            </div>
+                        </div>
+                    </h3>
+                    <div class="fundamental-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                        <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--card-border); border-radius: 0.75rem; padding: 0.75rem 1rem;">
+                            <div class="stat-label" style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.35rem; font-weight: 500;">연간 영업이익률</div>
+                            <div class="stat-value" id="detail-operating-margin" style="font-size: 1.1rem; font-weight: 800; color: #fff;">-</div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--card-border); border-radius: 0.75rem; padding: 0.75rem 1rem;">
+                            <div class="stat-label" style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.35rem; font-weight: 500;">분기 매출 성장률 (YoY)</div>
+                            <div class="stat-value" id="detail-revenue-growth" style="font-size: 1.1rem; font-weight: 800; color: #fff;">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Analyst Recommendations -->
+                <div class="report-section" style="margin-top: 2rem;">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span class="section-icon">📊</span> 최근 증권사 추천 및 목표가
+                        <div class="info-tooltip-container">
+                            <span class="info-tooltip-trigger">?</span>
+                            <div class="info-tooltip-content">
+                                <strong>최근 증권사 추천 및 목표가 설명:</strong><br>
+                                주요 투자기관(증권사/투자은행)에서 최근 발표한 리포트 의견입니다.<br>
+                                • <strong>추천 기관</strong>: 리포트를 발표한 증권사 또는 글로벌 투자은행(IB)입니다.<br>
+                                • <strong>투자의견</strong>: 매수(Buy), 적극 매수(Strong Buy), 비중확대(Overweight) 등의 의견입니다.<br>
+                                • <strong>목표가격</strong>: 해당 기관이 제시한 12개월 목표 주가입니다.<br>
+                                • <strong>목표가 대비 괴리율 (상승 여력)</strong>: 현재 주가 대비 목표주가까지의 예상 상승 여력(Upside)을 나타냅니다.
+                            </div>
+                        </div>
+                    </h3>
+                    <div id="analyst-rec-container" style="background: rgba(0, 0, 0, 0.2); border: 1px solid var(--card-border); border-radius: 0.75rem; overflow: hidden; margin-top: 0.5rem;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid var(--card-border); background: rgba(255,255,255,0.03);">
+                                    <th style="padding: 0.75rem 1rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap;">추천 기관</th>
+                                    <th style="padding: 0.75rem 1rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap;">투자의견</th>
+                                    <th style="padding: 0.75rem 1rem; color: var(--text-secondary); font-weight: 600; text-align: right; white-space: nowrap;">목표주가</th>
+                                    <th style="padding: 0.75rem 1rem; color: var(--text-secondary); font-weight: 600; text-align: right; white-space: nowrap;">괴리율 (상승여력)</th>
+                                    <th style="padding: 0.75rem 1rem; color: var(--text-secondary); font-weight: 600; text-align: center; white-space: nowrap;">발표일</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analyst-rec-tbody">
+                                <!-- Dynamic rows go here -->
+                            </tbody>
+                        </table>
+                        <div id="analyst-rec-empty" style="padding: 1.5rem; text-align: center; color: var(--text-secondary); display: none;">
+                            최근 추천 정보 없음
+                        </div>
+                    </div>
+                </div>
+                </div> <!-- End of stock-report-details -->
+                
+                <div id="etf-report-details" style="display: none; flex-direction: column; gap: 2rem; width: 100%;">
+                    <!-- 1. ETF 기본 프로필 -->
+                    <div class="report-section">
+                        <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="section-icon">📋</span> ETF 기본 정보
+                        </h3>
+                        <div class="expert-detail-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                            <div class="detail-stat-box" style="background: rgba(0,0,0,0.2); border: 1px solid var(--card-border); border-radius: 0.75rem; padding: 0.75rem 1rem;">
+                                <div class="stat-label" style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.35rem; font-weight: 500;">추종 기초자산</div>
+                                <div class="stat-value" id="etf-detail-underlying" style="font-size: 0.95rem; font-weight: 700; color: #fff;">-</div>
+                            </div>
+                            <div class="detail-stat-box" style="background: rgba(0,0,0,0.2); border: 1px solid var(--card-border); border-radius: 0.75rem; padding: 0.75rem 1rem;">
+                                <div class="stat-label" style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.35rem; font-weight: 500;">자산 규모 (AUM)</div>
+                                <div class="stat-value" id="etf-detail-aum" style="font-size: 1rem; font-weight: 700; color: #fff;">-</div>
+                            </div>
+                            <div class="detail-stat-box" style="background: rgba(0,0,0,0.2); border: 1px solid var(--card-border); border-radius: 0.75rem; padding: 0.75rem 1rem;">
+                                <div class="stat-label" style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.35rem; font-weight: 500;">총보수비율 (TER)</div>
+                                <div class="stat-value" id="etf-detail-ter" style="font-size: 1rem; font-weight: 700; color: #fff;">-</div>
+                            </div>
+                            <div class="detail-stat-box" style="background: rgba(0,0,0,0.2); border: 1px solid var(--card-border); border-radius: 0.75rem; padding: 0.75rem 1rem;">
+                                <div class="stat-label" style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.35rem; font-weight: 500;">연간 배당수익률 (분배율)</div>
+                                <div class="stat-value" id="etf-detail-dividend" style="font-size: 1rem; font-weight: 700; color: #fff;">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. ETF 스코어링 분석 -->
+                    <div class="report-section">
+                        <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="section-icon">📈</span> 고수 원칙 5대 요인 스코어링
+                        </h3>
+                        
+                        <!-- ETF 전용 5대 가중 결합 추천 방식 판정기준 설명 카드 (가로 구조) -->
+                        <div class="etf-principles-explanation" style="padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 2rem; margin-bottom: 1.25rem; background: rgba(30, 41, 59, 0.25); border: 1px solid var(--card-border); border-radius: 0.75rem; flex-wrap: wrap;">
+                            <!-- Left side: 5대 가산 점수계 1-5 설명 리스트 -->
+                            <div style="flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: 0.75rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; color: #fbbf24; font-weight: 700; font-size: 0.95rem;">
+                                    <span style="font-size: 1.1rem; color: #fbbf24;">ⓘ</span>
+                                    <span>ETF 전용 5대 가중 결합 추천 방식 (계량 가산 점수계)</span>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 0.45rem; font-size: 0.82rem; color: #cbd5e1; line-height: 1.55;">
+                                    <div>① <strong>거래량/대금 (25%)</strong>: 5일 평균 거래유동성 수치이며, 괴리율 빈도가 0.2%/0.5%를 넘어설 시 패널티를 부여합니다.</div>
+                                    <div>② <strong>자산 규모 AUM (15%)</strong>: 조기상장폐지 리스크 제어를 고려한 순자산 규모 가산.</div>
+                                    <div>③ <strong>추세 & 모멘텀 (30%)</strong>: 3개월 + 6개월 변동 듀얼 모멘텀 및 핵심 이동평균선 상회도.</div>
+                                    <div>④ <strong>수급 주체 (20%)</strong>: 기관+외국인+LP 공급자의 최근 5일간 누적 순매수 대금 수준 가중.</div>
+                                    <div>⑤ <strong style="color: #34d399;">총보수 TER (10%)</strong>: 운용 수수료가 낮을수록 고득점이며, 배당형 자산의 경우 <span style="color: #34d399; font-weight: 600;">배당수익률(30%)</span>을 적극 반영합니다.</div>
+                                </div>
+                            </div>
+                            <!-- Right side: 5대 가중치 뱃지 가로 배치 -->
+                            <div style="display: flex; gap: 0.5rem; align-items: center; justify-content: center; flex-wrap: nowrap;">
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--card-border); border-radius: 8px; width: 80px; height: 55px; text-align: center; justify-content: center; padding: 0.2rem 0;">
+                                    <span style="font-size: 0.9rem; font-weight: 700; color: #fbbf24; font-family: monospace; line-height: 1.2;">25%</span>
+                                    <span style="font-size: 0.68rem; color: #94a3b8; font-weight: 600; margin-top: 1px;">거래유동성</span>
+                                </div>
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--card-border); border-radius: 8px; width: 80px; height: 55px; text-align: center; justify-content: center; padding: 0.2rem 0;">
+                                    <span style="font-size: 0.9rem; font-weight: 700; color: #fbbf24; font-family: monospace; line-height: 1.2;">15%</span>
+                                    <span style="font-size: 0.68rem; color: #94a3b8; font-weight: 600; margin-top: 1px;">자산규모</span>
+                                </div>
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--card-border); border-radius: 8px; width: 80px; height: 55px; text-align: center; justify-content: center; padding: 0.2rem 0;">
+                                    <span id="etf-badge-weight-3" style="font-size: 0.9rem; font-weight: 700; color: #fbbf24; font-family: monospace; line-height: 1.2;">30%</span>
+                                    <span id="etf-badge-label-3" style="font-size: 0.68rem; color: #94a3b8; font-weight: 600; margin-top: 1px;">듀얼추세</span>
+                                </div>
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--card-border); border-radius: 8px; width: 80px; height: 55px; text-align: center; justify-content: center; padding: 0.2rem 0;">
+                                    <span style="font-size: 0.9rem; font-weight: 700; color: #fbbf24; font-family: monospace; line-height: 1.2;">20%</span>
+                                    <span style="font-size: 0.68rem; color: #94a3b8; font-weight: 600; margin-top: 1px;">세력수급</span>
+                                </div>
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--card-border); border-radius: 8px; width: 80px; height: 55px; text-align: center; justify-content: center; padding: 0.2rem 0;">
+                                    <span id="etf-badge-weight-5" style="font-size: 0.9rem; font-weight: 700; color: #34d399; font-family: monospace; line-height: 1.2;">10%</span>
+                                    <span id="etf-badge-label-5" style="font-size: 0.68rem; color: #94a3b8; font-weight: 600; margin-top: 1px;">비용/배율</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="etf-factor-scores-container" style="display: flex; flex-direction: column; gap: 1.25rem; background: rgba(0,0,0,0.15); border: 1px solid var(--card-border); border-radius: 0.75rem; padding: 1.5rem;">
+                            <!-- Dynamic Factor Progress Bars -->
+                        </div>
+                    </div>
+
+                    <!-- ETF Analyst Recommendations -->
+                    <div class="report-section" style="margin-top: 2rem;">
+                        <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="section-icon">🏢</span> 주요 증권사별 ETF 추천 의견
+                        </h3>
+                        <div id="etf-analyst-rec-container" style="background: rgba(0, 0, 0, 0.2); border: 1px solid var(--card-border); border-radius: 0.75rem; overflow: hidden; margin-top: 0.5rem;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid var(--card-border); background: rgba(255,255,255,0.03);">
+                                        <th style="padding: 0.75rem 1rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap;">추천 기관</th>
+                                        <th style="padding: 0.75rem 1rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap;">투자의견</th>
+                                        <th style="padding: 0.75rem 1rem; color: var(--text-secondary); font-weight: 600; text-align: right; white-space: nowrap;">목표주가</th>
+                                        <th style="padding: 0.75rem 1rem; color: var(--text-secondary); font-weight: 600; text-align: right; white-space: nowrap;">괴리율 (상승여력)</th>
+                                        <th style="padding: 0.75rem 1rem; color: var(--text-secondary); font-weight: 600; text-align: center; white-space: nowrap;">발표일</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="etf-analyst-rec-tbody">
+                                    <!-- Dynamic rows go here -->
+                                </tbody>
+                            </table>
+                            <div id="etf-analyst-rec-empty" style="padding: 1.5rem; text-align: center; color: var(--text-secondary); display: none;">
+                                최근 추천 정보 없음
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. 종합 평가 코멘트 -->
+                    <div class="report-section">
+                        <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="section-icon">💡</span> 종합 분석 코멘트
+                        </h3>
+                        <div id="etf-detail-commentary-box" style="background: linear-gradient(135deg, rgba(236,72,153,0.05), rgba(59,130,246,0.05)); border: 1px solid rgba(255,255,255,0.08); border-radius: 0.75rem; padding: 1.25rem; font-size: 0.92rem; line-height: 1.6; color: #cbd5e1; font-weight: 500;">
+                            -
+                        </div>
+                    </div>
+                </div> <!-- End of etf-report-details -->
+
+                <!-- 4. 실시간 차트 분석 -->
+                <div class="report-section" style="margin-top: 1rem; border-top: 1px solid var(--card-border); padding-top: 1.5rem;">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="section-icon">📈</span> 실시간 차트 분석
+                        </div>
+                        <div class="chart-controls" style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.8rem;">
+                            <div class="range-selector-expert" style="display: flex; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); border-radius: 999px; padding: 2px;">
+                                <button class="range-btn-expert" data-range="1h">1H</button>
+                                <button class="range-btn-expert active" data-range="1d">1D</button>
+                                <button class="range-btn-expert" data-range="1w">1W</button>
+                                <button class="range-btn-expert" data-range="1mo">1M</button>
+                                <button class="range-btn-expert" data-range="6mo">6M</button>
+                                <button class="range-btn-expert" data-range="1y">1Y</button>
+                            </div>
+                        </div>
+                    </h3>
+                    <div class="chart-container" style="height: 300px; position: relative;">
+                        <canvas id="expert-detail-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Tab: Expert Guide Walkthrough Modal ── -->
+    <div class="modal-overlay" id="expert-guide-modal">
+        <div class="modal-content glass-card" style="max-width: 900px; width: 90%; height: auto; max-height: 80vh; display: flex; flex-direction: column; padding: 2.5rem; position: relative; gap: 0;">
+            <button class="close-btn" id="expert-guide-modal-close-btn" style="position: absolute; right: 20px; top: 20px;">&times;</button>
+            <div class="report-header" style="margin-bottom: 20px; border-bottom: 1px solid var(--card-border); padding-bottom: 15px;">
+                <div class="report-title-group">
+                    <span class="report-badge" style="background: rgba(59, 130, 246, 0.2); color: var(--neon-blue); font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700;">사용 설명 가이드</span>
+                    <h2 style="font-size: 1.6rem; font-weight: 800; margin: 8px 0; color: #fff;">고수들의 투자 원칙 스크리너 사용 설명서</h2>
+                </div>
+            </div>
+            <div id="expert-guide-content" class="markdown-body" style="flex: 1; overflow-y: auto; color: #cbd5e1; font-size: 0.92rem; line-height: 1.6; padding-right: 10px; display: flex; flex-direction: column; gap: 1rem;">
+                <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">설명서를 불러오는 중입니다...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Performance Backtest Analysis Modal ── -->
+    <div class="modal-overlay" id="backtest-modal">
+        <div class="modal-content glass-card backtest-modal-content" style="max-width: 900px; width: 90%; height: auto; max-height: 85vh; overflow-y: auto; padding: 2.5rem; position: relative;">
+            <button class="close-btn" id="backtest-modal-close-btn">&times;</button>
+            <div class="backtest-panel-header" style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                <h2 style="font-size: 1.4rem; font-weight: 700; color: #fff; margin: 0;">Performance Analysis</h2>
+                <div class="backtest-controls" style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                    <button class="bt-range-btn" data-range="10y">10Y</button>
+                    <button class="bt-range-btn" data-range="7y">7Y</button>
+                    <button class="bt-range-btn active" data-range="5y">5Y</button>
+                    <button class="bt-range-btn" data-range="3y">3Y</button>
+                    <button class="bt-range-btn" data-range="1y">1Y</button>
+                    <button class="bt-range-btn" data-range="6mo">6M</button>
+                </div>
+            </div>
+            <div class="backtest-chart-wrap" style="height: 400px; position: relative;">
+                <!-- Loading overlay -->
+                <div class="loading-overlay" id="backtest-loading" style="display:none;">
+                    <div class="loading-inner">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-status" id="backtest-loading-status">Initializing...</div>
+                        <div class="loading-progress-wrap">
+                            <div class="loading-progress-bar" id="backtest-progress-bar" style="width:0%"></div>
+                        </div>
+                        <div class="loading-detail" id="backtest-loading-detail"></div>
+                    </div>
+                </div>
+                <!-- Empty state -->
+                <div class="backtest-empty" id="backtest-empty">
+                    <div class="empty-icon">📊</div>
+                    <p>Add stocks to your portfolio and<br>click <strong>Run Analysis</strong> to see results</p>
+                </div>
+                <!-- Chart canvas (hidden until data loaded) -->
+                <canvas id="backtest-chart" style="display:none;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Portfolio Snapshot List Modal ── -->
+    <div class="modal-overlay" id="snapshot-modal">
+        <div class="modal-content glass-card" style="max-width: 950px; width: 90%; height: auto; max-height: 85vh; overflow-y: auto; padding: 2.5rem; position: relative;">
+            <button class="close-btn" id="snapshot-modal-close-btn">&times;</button>
+            <div class="report-header" style="margin-bottom: 20px; border-bottom: 1px solid var(--card-border); padding-bottom: 15px;">
+                <div class="report-title-group">
+                    <span class="report-badge" style="background: rgba(139, 92, 246, 0.2); color: var(--neon-purple); font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700;">포트폴리오 스냅샷</span>
+                    <h2 style="font-size: 1.6rem; font-weight: 800; margin: 8px 0; color: #fff;">저장된 포트폴리오 스냅샷 관리</h2>
+                </div>
+            </div>
+            
+            <div class="snapshot-modal-body" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <div id="snapshot-modal-list" style="display: flex; flex-direction: column; gap: 1.25rem;">
+                    <div style="text-align: center; color: var(--text-secondary); padding: 3rem 0; font-size: 0.95rem;">저장된 스냅샷이 없습니다.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Recommended Portfolios Modal ── -->
+    <div class="modal-overlay" id="recommend-modal">
+        <div class="modal-content glass-card" style="max-width: 1000px; width: 90%; max-height: 85vh; display: flex; flex-direction: column; padding: 2.5rem; position: relative; gap: 0;">
+            <button class="close-btn" id="recommend-modal-close-btn" style="position: absolute; right: 20px; top: 20px;">&times;</button>
+            <div class="report-header" style="margin-bottom: 20px; border-bottom: 1px solid var(--card-border); padding-bottom: 15px;">
+                <div class="report-title-group">
+                    <span class="report-badge" style="background: rgba(251, 191, 36, 0.2); color: #fbbf24; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700;">추천</span>
+                    <h2 style="font-size: 1.6rem; font-weight: 800; margin: 8px 0 4px 0; color: #fff;">추천 포트폴리오</h2>
+                    <p class="recommend-subtitle" style="color: var(--text-secondary); margin-top: 0.25rem; font-size: 0.95rem;">총 1,000만원 기준 · 10년 백테스트 기반</p>
+                </div>
+            </div>
+            <div style="flex: 1; overflow-y: auto; padding-right: 5px; margin-top: 10px;">
+                <!-- ── My Portfolio vs Recommended Strategies Comparison Dashboard ── -->
+                <div id="recommend-comparison-dashboard" class="glass-card" style="margin-bottom: 20px; padding: 1.25rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--card-border);">
+                    <h3 style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 6px;">
+                        📊 나의 포트폴리오 vs 추천 전략 적합도 비교
+                    </h3>
+                    <p style="color: var(--text-secondary); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.4;">
+                        보유 중인 종목들과 각 추천 전략의 자산 구성을 비교하여 적합도 점수 및 조정 팁을 제공합니다.
+                    </p>
+                    <div id="recommend-comparison-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Toast Notifications Container ── -->
+    <div id="toast-container" style="position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 9999; pointer-events: none;"></div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-content">
+            <p>&copy; 2026 StockPulse. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="/privacy" id="privacy-link">개인정보처리방침</a>
+                <span class="separator">|</span>
+                <a href="/service" id="service-link">서비스이용약관</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
