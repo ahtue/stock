@@ -2182,11 +2182,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const path = window.location.pathname;
     if (path.endsWith('/privacy')) {
         document.body.innerHTML = '<iframe src="privacy.pdf" style="width:100%; height:100vh; border:none; margin:0; padding:0; overflow:hidden; z-index:999999; position:fixed; top:0; left:0; right:0; bottom:0;"></iframe>';
-        document.title = "개인정보처리방침 | StockPulse";
+        document.title = "개인정보처리방침 | AlphaSnap";
         return;
     } else if (path.endsWith('/service')) {
         document.body.innerHTML = '<iframe src="service.pdf" style="width:100%; height:100vh; border:none; margin:0; padding:0; overflow:hidden; z-index:999999; position:fixed; top:0; left:0; right:0; bottom:0;"></iframe>';
-        document.title = "서비스이용약관 | StockPulse";
+        document.title = "서비스이용약관 | AlphaSnap";
         return;
     }
 
@@ -2198,7 +2198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             history.pushState(null, '', '/privacy');
             document.body.innerHTML = '<iframe src="privacy.pdf" style="width:100%; height:100vh; border:none; margin:0; padding:0; overflow:hidden; z-index:999999; position:fixed; top:0; left:0; right:0; bottom:0;"></iframe>';
-            document.title = "개인정보처리방침 | StockPulse";
+            document.title = "개인정보처리방침 | AlphaSnap";
         });
     }
     if (serviceLink) {
@@ -2206,7 +2206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             history.pushState(null, '', '/service');
             document.body.innerHTML = '<iframe src="service.pdf" style="width:100%; height:100vh; border:none; margin:0; padding:0; overflow:hidden; z-index:999999; position:fixed; top:0; left:0; right:0; bottom:0;"></iframe>';
-            document.title = "서비스이용약관 | StockPulse";
+            document.title = "서비스이용약관 | AlphaSnap";
         });
     }
     window.addEventListener('popstate', () => {
