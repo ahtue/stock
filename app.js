@@ -16,7 +16,7 @@ let cachedKoreanStocks = null;
 let googleTokenClient = null;
 let googleAccessToken = null;
 let googleUserInfo = null; // Global state for user profile in modal
-const GOOGLE_CLIENT_ID = '865014531811-pn6eod566v3pe46f6tv9efv1la03h3t8.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '224164806363-91lt32ve1a428d0c4n7urq001ndtgbks.apps.googleusercontent.com';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxquDJrbEonmno3dfyUn6A98OQB8YSnSxW_pcuuYJkeEuWRaJgxyyPQpV0aaCLkujM-tQ/exec';
 
