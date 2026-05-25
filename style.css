@@ -2714,6 +2714,256 @@ body {
     box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
 }
 
+/* ==========================================================================
+   Mobile-Responsive Upgrades (AlphaSnap Native Experience)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    /* 1. Body Padding Adjustments */
+    body {
+        padding-bottom: 75px !important; /* Avoid bottom tab bar overlap */
+    }
+
+    /* 2. Top Navbar - Hide Tab Nav & compact layout */
+    .navbar {
+        padding: 0 1rem !important;
+        height: 56px !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background: rgba(11, 15, 25, 0.95) !important;
+    }
+    .navbar .tab-nav {
+        display: none !important; /* Hidden from top, moved to bottom */
+    }
+    .market-status {
+        display: none !important; /* Hide open status on small screens */
+    }
+
+    /* 3. Bottom Tab Bar Navigation (iOS/Android Native Style) */
+    .tab-nav {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        height: 60px !important;
+        border-radius: 0 !important;
+        border: none !important;
+        border-top: 1px solid var(--card-border) !important;
+        background: rgba(11, 15, 25, 0.96) !important;
+        backdrop-filter: blur(20px) !important;
+        -webkit-backdrop-filter: blur(20px) !important;
+        display: flex !important;
+        justify-content: space-around !important;
+        align-items: center !important;
+        padding: 0.2rem 0 !important;
+        margin: 0 !important;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5) !important;
+        z-index: 9999 !important;
+    }
+
+    .tab-btn {
+        flex-direction: column !important;
+        gap: 2px !important;
+        padding: 0.35rem 0.5rem !important;
+        font-size: 0.7rem !important;
+        width: 22% !important;
+        background: transparent !important;
+        border-radius: 8px !important;
+        box-shadow: none !important;
+    }
+    .tab-btn span:last-child {
+        display: inline-block !important; /* Ensure text label is visible */
+    }
+    .tab-btn .tab-icon {
+        font-size: 1.2rem !important;
+    }
+    .tab-btn.active {
+        background: transparent !important;
+        color: var(--neon-blue) !important;
+        text-shadow: 0 0 10px rgba(59, 130, 246, 0.4) !important;
+    }
+
+    /* 4. Compact User Profile on mobile */
+    .user-profile {
+        padding: 0.25rem 0.4rem 0.25rem 0.8rem !important;
+        gap: 0.5rem !important;
+    }
+    .user-name {
+        display: none !important; /* Hide user name to save space */
+    }
+    .user-profile .sync-btn, 
+    .user-profile .load-btn {
+        padding: 4px 6px !important;
+        max-width: 28px !important;
+        overflow: hidden !important;
+        white-space: nowrap !important;
+        text-overflow: clip !important;
+        display: inline-flex !important;
+        justify-content: center !important;
+        margin: 0 !important;
+    }
+    .user-profile .logout-btn {
+        margin-left: 2px !important;
+    }
+
+    /* 5. Responsive Search & Toolbar */
+    .stocks-toolbar {
+        position: relative !important;
+        top: 0 !important;
+        padding: 1rem !important;
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+    .search-container {
+        width: 100% !important;
+        display: flex !important;
+        gap: 0.4rem !important;
+    }
+    .search-container input[type="text"] {
+        flex: 1 !important;
+        min-width: 0 !important;
+        padding: 0.5rem 0.75rem !important;
+        font-size: 0.85rem !important;
+    }
+    #search-code-btn, #add-chart-btn {
+        padding: 0.5rem 0.75rem !important;
+        font-size: 0.82rem !important;
+        white-space: nowrap !important;
+    }
+    .toolbar-controls {
+        width: 100% !important;
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+        align-items: stretch !important;
+    }
+    .time-range-controls, .chart-type-controls {
+        width: 100% !important;
+        justify-content: space-between !important;
+    }
+    .range-btn, .type-btn {
+        flex: 1 !important;
+        text-align: center !important;
+        padding: 0.4rem 0.2rem !important;
+    }
+
+    /* 6. Dashboard Grid Layout for Mobile */
+    .dashboard-container {
+        padding: 0.75rem !important;
+        gap: 1rem !important;
+    }
+    .chart-card {
+        padding: 0.85rem !important;
+    }
+    .chart-card .card-header {
+        margin-bottom: 1rem !important;
+    }
+    .chart-card h2 {
+        font-size: 1.05rem !important;
+    }
+
+    /* 7. Fullscreen Modal Overlays for Mobile Native View */
+    .modal-overlay .modal-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        border-radius: 0 !important;
+        padding: 1.25rem !important;
+        box-sizing: border-box !important;
+    }
+    .close-btn {
+        top: 0.75rem !important;
+        right: 1rem !important;
+        font-size: 1.75rem !important;
+        z-index: 1001 !important;
+    }
+
+    /* Keep login modal as a small centered card */
+    #login-modal .modal-content {
+        width: 90% !important;
+        max-width: 400px !important;
+        height: auto !important;
+        max-height: 85vh !important;
+        border-radius: 1.25rem !important;
+        padding: 1.5rem !important;
+        margin: auto !important;
+    }
+
+    /* 8. Portfolio Tab Layout mobile tweaks */
+    .portfolio-tab-layout {
+        padding: 0.75rem !important;
+        gap: 1rem !important;
+    }
+    .portfolio-summary-panel, .portfolio-list-panel {
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
+        padding: 1rem !important;
+    }
+    .portfolio-list {
+        overflow: visible !important;
+        height: auto !important;
+    }
+    .portfolio-item {
+        flex-wrap: wrap !important;
+        padding: 0.85rem !important;
+        gap: 0.75rem !important;
+        position: relative !important;
+    }
+    .pt-left-group {
+        width: calc(100% - 35px) !important;
+        flex: none !important;
+    }
+    .pt-delete {
+        position: absolute !important;
+        top: 0.85rem !important;
+        right: 0.85rem !important;
+    }
+    .pt-qty-spin-container {
+        width: 110px !important;
+    }
+    .pt-valuation-block {
+        flex: 1 !important;
+        min-width: 0 !important;
+        align-items: flex-end !important;
+    }
+
+    /* 9. Recommended Portfolio Tab details mobile tweaks */
+    .recommend-stats {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.5rem !important;
+    }
+    .stat-box {
+        padding: 0.5rem !important;
+    }
+    .stat-box div:first-child {
+        font-size: 0.62rem !important;
+    }
+    .stat-box div:last-child {
+        font-size: 0.85rem !important;
+    }
+    .comparison-summary-container {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+    .expert-detail-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+
+    /* 10. Floating Toasts offset for bottom bar */
+    #toast-container {
+        bottom: 75px !important;
+        right: 10px !important;
+        left: 10px !important;
+    }
+    .toast-msg {
+        width: 100% !important;
+        max-width: none !important;
+    }
+}
+
 
 
 
