@@ -1805,7 +1805,7 @@ function updateDonutChart() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '70%',
+                cutout: '50%',
                 plugins: {
                     legend: { display: false },
                     tooltip: { enabled: false }
@@ -1845,7 +1845,7 @@ function updateDonutChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '70%',
+            cutout: '50%',
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -3325,7 +3325,7 @@ function createPieChart(canvasId, allocations) {
             }]
         },
         options: {
-            responsive: false, cutout: '62%',
+            responsive: false, cutout: '50%',
             animation: { duration: 700 },
             plugins: {
                 legend: { display: false },
