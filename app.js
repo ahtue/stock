@@ -2303,6 +2303,82 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
+    // ── Mobile Swipe Gesture Navigation ────────────────────────
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+
+    function getVisibleTabs() {
+        const tabs = [];
+        document.querySelectorAll('.tab-nav .tab-btn').forEach(btn => {
+            if (window.getComputedStyle(btn).display !== 'none') {
+                tabs.push(btn.getAttribute('data-tab'));
+            }
+        });
+        return tabs;
+    }
+
+    function shouldIgnoreSwipe(target) {
+        if (document.querySelector('.modal-overlay.active')) {
+            return true;
+        }
+        if (target.closest('input') || 
+            target.closest('select') || 
+            target.closest('textarea') || 
+            target.closest('button') || 
+            target.closest('a')) {
+            return true;
+        }
+        const tableContainer = target.closest('.table-container');
+        if (tableContainer && tableContainer.scrollWidth > tableContainer.clientWidth) {
+            return true;
+        }
+        return false;
+    }
+
+    document.addEventListener('touchstart', (e) => {
+        if (window.innerWidth > 1150) return;
+        if (e.touches.length !== 1) return;
+        if (shouldIgnoreSwipe(e.target)) return;
+
+        touchStartX = e.touches[0].screenX;
+        touchStartY = e.touches[0].screenY;
+        touchStartTime = Date.now();
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        if (window.innerWidth > 1150) return;
+        if (e.changedTouches.length !== 1) return;
+        if (shouldIgnoreSwipe(e.target)) return;
+
+        const diffX = e.changedTouches[0].screenX - touchStartX;
+        const diffY = e.changedTouches[0].screenY - touchStartY;
+        const duration = Date.now() - touchStartTime;
+
+        if (duration < 350 && Math.abs(diffX) > 60 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+            const visibleTabs = getVisibleTabs();
+            const activeBtn = document.querySelector('.tab-nav .tab-btn.active');
+            const currentTab = activeBtn ? activeBtn.getAttribute('data-tab') : null;
+            const currentIndex = visibleTabs.indexOf(currentTab);
+
+            if (currentIndex !== -1) {
+                if (diffX < 0) {
+                    if (currentIndex < visibleTabs.length - 1) {
+                        const nextTab = visibleTabs[currentIndex + 1];
+                        const btn = document.querySelector(`.tab-nav .tab-btn[data-tab="${nextTab}"]`);
+                        if (btn) btn.click();
+                    }
+                } else {
+                    if (currentIndex > 0) {
+                        const prevTab = visibleTabs[currentIndex - 1];
+                        const btn = document.querySelector(`.tab-nav .tab-btn[data-tab="${prevTab}"]`);
+                        if (btn) btn.click();
+                    }
+                }
+            }
+        }
+    }, { passive: true });
+
     // ── Analyze Portfolio Button ───────────────────────────────
     document.getElementById('analyze-portfolio-btn').addEventListener('click', async () => {
         const activeItems = portfolio.filter(p => p.quantity > 0);
