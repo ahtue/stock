@@ -443,7 +443,8 @@ async function fetchRealData(ticker, rangeKey = '1d', retries = 3) {
                 return {
                     data: cleanData,
                     previousClose: previousClose,
-                    companyName: companyName
+                    companyName: companyName,
+                    isMock: false
                 };
             }
         } catch (e) {
@@ -455,7 +456,11 @@ async function fetchRealData(ticker, rangeKey = '1d', retries = 3) {
     // Fallback for any stock/index if Yahoo API fails
     const cleanTicker = tickerStr.toUpperCase();
     console.warn(`Yahoo Finance failed for ${tickerStr}, falling back to mock history.`);
-    return generateMockHistory(cleanTicker, rangeKey);
+    const mockRes = generateMockHistory(cleanTicker, rangeKey);
+    return {
+        ...mockRes,
+        isMock: true
+    };
 }
 
 // Format numbers
@@ -1544,8 +1549,21 @@ async function backgroundFetchPortfolioData() {
             if (!currentPortfolioPrices[item.key]) {
                 const apiResult = await fetchRealData(item.ticker, '1d', 1);
                 if (apiResult && apiResult.data.length > 0) {
-                    currentPortfolioPrices[item.key] = apiResult.data[apiResult.data.length - 1].price;
-                    currentPortfolioPrevCloses[item.key] = apiResult.previousClose || 0;
+                    if (apiResult.isMock && item.lastPrice) {
+                        currentPortfolioPrices[item.key] = item.lastPrice;
+                        currentPortfolioPrevCloses[item.key] = item.lastPrevClose || item.lastPrice;
+                        console.log(`Failed to fetch real price for ${item.ticker}, using last known price: ${item.lastPrice}`);
+                    } else {
+                        const fetchedPrice = apiResult.data[apiResult.data.length - 1].price;
+                        currentPortfolioPrices[item.key] = fetchedPrice;
+                        currentPortfolioPrevCloses[item.key] = apiResult.previousClose || 0;
+                        
+                        // If it's a real price, cache it on the item
+                        if (!apiResult.isMock) {
+                            item.lastPrice = fetchedPrice;
+                            item.lastPrevClose = apiResult.previousClose || 0;
+                        }
+                    }
                     if (apiResult.companyName && !item.companyName) {
                         item.companyName = apiResult.companyName;
                         savePortfolio();
@@ -4207,12 +4225,20 @@ window.forceLocalRestore = async function() {
     if (localPortfolio.length > 0 || localSearches.length > 0 || localSnapshots.length > 0) {
         portfolio = localPortfolio.map(item => {
             const corrected = correctKoreanTicker(item.ticker);
+            const key = `custom_${corrected.replace(/[^A-Z0-9]/g, '')}`;
+            
+            // Restore last known prices into cache immediately
+            if (item.lastPrice) {
+                currentPortfolioPrices[key] = item.lastPrice;
+                currentPortfolioPrevCloses[key] = item.lastPrevClose || item.lastPrice;
+            }
+            
             if (corrected !== item.ticker) {
                 console.log(`Auto-correcting local portfolio ticker from ${item.ticker} to ${corrected}`);
                 return {
                     ...item,
                     ticker: corrected,
-                    key: `custom_${corrected.replace(/[^A-Z0-9]/g, '')}`
+                    key: key
                 };
             }
             return item;
@@ -4560,12 +4586,20 @@ async function restoreUserData(data) {
     if (data.portfolio && Array.isArray(data.portfolio)) {
         portfolio = data.portfolio.map(item => {
             const corrected = correctKoreanTicker(item.ticker);
+            const key = `custom_${corrected.replace(/[^A-Z0-9]/g, '')}`;
+            
+            // Restore last known prices into cache immediately
+            if (item.lastPrice) {
+                currentPortfolioPrices[key] = item.lastPrice;
+                currentPortfolioPrevCloses[key] = item.lastPrevClose || item.lastPrice;
+            }
+            
             if (corrected !== item.ticker) {
                 console.log(`Auto-correcting portfolio ticker from ${item.ticker} to ${corrected}`);
                 return {
                     ...item,
                     ticker: corrected,
-                    key: `custom_${corrected.replace(/[^A-Z0-9]/g, '')}`
+                    key: key
                 };
             }
             return item;
@@ -5221,7 +5255,8 @@ function generateMockHistory(ticker, rangeKey) {
     return {
         data: data,
         previousClose: data.length > 0 ? data[0].c : basePrice,
-        companyName: name
+        companyName: name,
+        isMock: true
     };
 }
 
