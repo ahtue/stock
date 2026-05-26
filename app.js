@@ -1393,7 +1393,7 @@ function renderPortfolio() {
     
     for (const { item, valKrw } of sortedPortfolio) {
         let price = currentPortfolioPrices[item.key] || 0;
-        let prevClose = currentPortfolioPrevCloses[item.key] || (indices[item.key] ? indices[item.key].previousClose : 0) || price || 0;
+        let prevClose = currentPortfolioPrevCloses[item.key] || (indices[item.key] ? (indices[item.key].dailyPreviousClose || indices[item.key].previousClose) : 0) || price || 0;
         
         // Synchronously check if chart has price
         if (charts[item.key] && charts[item.key].data.datasets[0].data.length > 0) {
@@ -1401,8 +1401,8 @@ function renderPortfolio() {
             const lastData = chartData[chartData.length - 1];
             price = lastData.y !== undefined ? lastData.y : lastData.c;
             currentPortfolioPrices[item.key] = price;
-            if (indices[item.key] && indices[item.key].previousClose) {
-                prevClose = indices[item.key].previousClose;
+            if (indices[item.key]) {
+                prevClose = indices[item.key].dailyPreviousClose || indices[item.key].previousClose || prevClose;
                 currentPortfolioPrevCloses[item.key] = prevClose;
             }
         }
@@ -1603,7 +1603,7 @@ function updatePortfolioTotals(forceSort = false) {
     
     for (const item of portfolio) {
         const price = currentPortfolioPrices[item.key] || 0;
-        let prevClose = currentPortfolioPrevCloses[item.key] || (indices[item.key] ? indices[item.key].previousClose : 0) || price || 0;
+        let prevClose = currentPortfolioPrevCloses[item.key] || (indices[item.key] ? (indices[item.key].dailyPreviousClose || indices[item.key].previousClose) : 0) || price || 0;
         if (price === 0) allLoaded = false;
         
         let isKrw = item.ticker.endsWith('.KS') || item.ticker.endsWith('.KQ') || item.ticker === '^KS11' || item.ticker === '^KQ11';
