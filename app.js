@@ -7700,11 +7700,23 @@ function openExpertDetailModal(res) {
     const volumePopEl = document.getElementById('detail-volume-pop');
     volumePopEl.style.color = ''; // Reset inline color
     const isVolPop = res.detail.volumeRatioVal >= 500.0;
-    const volColor = isVolPop ? 'var(--positive)' : '#fff';
+    
+    let volText = '';
+    let volColor = '#fff';
+    if (res.detail.volumeRatioVal >= 100.0) {
+        const isSpike = res.detail.volumeRatioVal >= 120.0;
+        volText = `${res.detail.volumeRatio} ${isSpike ? '급증' : '수준'} ${isVolPop ? '(거래 폭발)' : '(거래 평이)'}`;
+        volColor = isVolPop ? 'var(--positive)' : '#fff';
+    } else {
+        const decPct = (100.0 - res.detail.volumeRatioVal).toFixed(0) + '%';
+        volText = `${decPct} 감소 (거래 평이)`;
+        volColor = 'var(--text-secondary)';
+    }
+
     volumePopEl.innerHTML = `
         <div style="display: flex; flex-direction: column; gap: 0.35rem; width: 100%;">
             <div style="font-weight: 700; color: ${volColor};">
-                ${res.detail.volumeRatio} 급증 ${isVolPop ? '(거래 폭발)' : '(거래 평이)'}
+                ${volText}
             </div>
             <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.2rem; border-top: 1px dashed rgba(255,255,255,0.06); padding-top: 0.35rem;">
                 <div>당일 거래량: <span style="font-family: monospace; color: #fff;">${new Intl.NumberFormat('ko-KR').format(Math.round(res.detail.currentVolume))}주</span></div>
