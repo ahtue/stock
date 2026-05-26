@@ -3101,6 +3101,134 @@ body {
     visibility: visible;
 }
 
+/* ──────────────────────────────────────
+   Chart Reorder Trigger Button & Modal
+   ────────────────────────────────────── */
+.reorder-trigger-btn {
+    padding: 0.5rem 1.25rem;
+    border-radius: 999px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.reorder-trigger-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.05);
+}
+
+.reorder-modal-content {
+    min-height: 250px;
+}
+
+.reorder-items-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+/* Scrollbar styling for modal grid */
+.reorder-items-grid::-webkit-scrollbar {
+    width: 6px;
+}
+.reorder-items-grid::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 3px;
+}
+.reorder-items-grid::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+.reorder-items-grid::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.reorder-item {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: grab;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+.reorder-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.reorder-item:active {
+    cursor: grabbing;
+}
+
+.reorder-item-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.reorder-item-handle {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    opacity: 0.6;
+}
+
+.reorder-item-name {
+    font-weight: 600;
+    color: #fff;
+    font-size: 0.95rem;
+}
+
+.reorder-item-ticker {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+.reorder-item.dragging {
+    opacity: 0.4;
+    background: rgba(139, 92, 246, 0.08);
+    border: 1px dashed var(--neon-purple);
+    transform: scale(0.98);
+}
+
+.reorder-item.drag-over {
+    border-top: 2px solid var(--neon-purple);
+    background: rgba(139, 92, 246, 0.03);
+}
+
+/* Hide text labels on narrow screens */
+@media (max-width: 1024px) {
+    .reorder-trigger-btn .btn-text {
+        display: none;
+    }
+    .reorder-trigger-btn {
+        width: 38px;
+        padding: 0 !important;
+    }
+}
+
 
 
 

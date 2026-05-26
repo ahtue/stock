@@ -103,10 +103,14 @@
                 <button class="range-btn" data-range="3y">3Y</button>
                 <button class="range-btn" data-range="5y">5Y</button>
             </div>
-            <div class="chart-type-controls">
+            <div class="chart-type-controls" style="margin-right: 8px;">
                 <button class="type-btn active" data-type="line">Line</button>
                 <button class="type-btn" data-type="candlestick">Candle</button>
             </div>
+            <button class="glass-btn reorder-trigger-btn" id="reorder-trigger-btn" title="차트 순서 변경">
+                <span>🔀</span>
+                <span class="btn-text">순서 변경</span>
+            </button>
         </div>
     </div>
 
@@ -1025,6 +1029,25 @@
                 </div>
 
 
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Chart Reorder Modal ── -->
+    <div class="modal-overlay" id="reorder-modal">
+        <div class="modal-content glass-card reorder-modal-content" style="max-width: 600px; width: 90%; height: auto; max-height: 85vh; display: flex; flex-direction: column; padding: 2.5rem; position: relative;">
+            <button class="close-btn" id="reorder-modal-close-btn">&times;</button>
+            <div class="report-header" style="margin-bottom: 20px; border-bottom: 1px solid var(--card-border); padding-bottom: 15px;">
+                <div class="report-title-group">
+                    <span class="report-badge" style="background: rgba(139, 92, 246, 0.2); color: var(--neon-purple); font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700;">순서 편집</span>
+                    <h2 style="font-size: 1.6rem; font-weight: 800; margin: 8px 0; color: #fff;">대시보드 차트 순서 변경</h2>
+                </div>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px;">
+                종목 카드를 드래그 앤 드롭하여 원하는 순서로 배치하세요. 변경 사항은 대시보드에 실시간으로 반영됩니다.
+            </p>
+            <div id="reorder-items-container" class="reorder-items-grid">
+                <!-- Dynamically populated via JS -->
             </div>
         </div>
     </div>

@@ -2540,6 +2540,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupLogin();
     setupReportModalListeners();
     setupDragAndDropListeners();
+    setupReorderModal();
     setupSearchCodeModalListeners();
     setupRecommendModalListeners();
     await initCharts();
@@ -4975,7 +4976,127 @@ function updateReorderedSearches() {
     });
 
     recentSearches = newSearches;
-    console.log('Drag-to-reordered searches saved in memory:', recentSearches);
+    localStorage.setItem('recent_searches', JSON.stringify(recentSearches));
+    console.log('Drag-to-reordered searches saved in memory and localStorage:', recentSearches);
+}
+
+function setupReorderModal() {
+    const triggerBtn = document.getElementById('reorder-trigger-btn');
+    const modal = document.getElementById('reorder-modal');
+    const closeBtn = document.getElementById('reorder-modal-close-btn');
+
+    if (!triggerBtn || !modal || !closeBtn) return;
+
+    triggerBtn.addEventListener('click', () => {
+        renderReorderItems();
+        modal.classList.add('active');
+    });
+
+    closeBtn.addEventListener('click', () => {
+        modal.classList.remove('active');
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('active');
+        }
+    });
+}
+
+function renderReorderItems() {
+    const container = document.getElementById('reorder-items-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const cards = document.querySelectorAll('.dashboard-container .chart-card');
+    if (cards.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 2rem 0; font-size: 0.95rem;">대시보드에 표시할 차트가 없습니다.</div>`;
+        return;
+    }
+
+    cards.forEach(card => {
+        const key = card.getAttribute('data-key');
+        const config = indices[key];
+        if (!config) return;
+
+        const name = getKoreanName(config.ticker, config.companyName || config.name);
+        const ticker = config.ticker;
+
+        const item = document.createElement('div');
+        item.className = 'reorder-item';
+        item.setAttribute('draggable', 'true');
+        item.setAttribute('data-key', key);
+
+        item.innerHTML = `
+            <div class="reorder-item-left">
+                <span class="reorder-item-handle">☰</span>
+                <span class="reorder-item-name">${name}</span>
+            </div>
+            <span class="reorder-item-ticker">${ticker}</span>
+        `;
+
+        setupReorderDragEvents(item);
+        container.appendChild(item);
+    });
+}
+
+function setupReorderDragEvents(item) {
+    item.addEventListener('dragstart', (e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', item.getAttribute('data-key'));
+        item.classList.add('dragging');
+    });
+
+    item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        document.querySelectorAll('.reorder-item').forEach(el => {
+            el.classList.remove('drag-over');
+        });
+    });
+
+    item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        const draggingEl = document.querySelector('.reorder-item.dragging');
+        if (draggingEl && draggingEl !== item) {
+            item.classList.add('drag-over');
+        }
+    });
+
+    item.addEventListener('dragleave', () => {
+        item.classList.remove('drag-over');
+    });
+
+    item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        item.classList.remove('drag-over');
+
+        const draggedKey = e.dataTransfer.getData('text/plain');
+        const draggedEl = document.querySelector(`.reorder-item[data-key="${draggedKey}"]`);
+        
+        if (draggedEl && draggedEl !== item) {
+            const rect = item.getBoundingClientRect();
+            const next = (e.clientY - rect.top) / rect.height > 0.5;
+            item.parentNode.insertBefore(draggedEl, next ? item.nextSibling : item);
+            updateDashboardOrderFromModal();
+        }
+    });
+}
+
+function updateDashboardOrderFromModal() {
+    const modalItems = document.querySelectorAll('.reorder-item');
+    const container = document.querySelector('.dashboard-container');
+    if (!container) return;
+
+    modalItems.forEach(item => {
+        const key = item.getAttribute('data-key');
+        const card = container.querySelector(`.chart-card[data-key="${key}"]`);
+        if (card) {
+            container.appendChild(card); // appendChild moves node to the end of the container
+        }
+    });
+    updateReorderedSearches();
 }
 
 async function openComparisonModal(keyA, keyB) {
