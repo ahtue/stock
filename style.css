@@ -253,23 +253,68 @@ body {
     color: var(--text-primary);
 }
 
-.logout-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: none;
-    color: var(--text-secondary);
+.user-profile .sync-btn,
+.user-profile .load-btn,
+.user-profile .logout-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
     cursor: pointer;
-    font-size: 1rem;
-    padding: 0.4rem;
-    border-radius: 50%;
     transition: all 0.2s;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 6px;
+    height: 28px;
+    box-sizing: border-box;
 }
 
-.logout-btn:hover {
-    background: rgba(239, 68, 68, 0.1);
+.user-profile .sync-btn {
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    color: var(--neon-blue);
+    margin-left: 10px;
+}
+.user-profile .sync-btn:hover {
+    background: rgba(59, 130, 246, 0.35);
+    border-color: rgba(59, 130, 246, 0.6);
+}
+
+.user-profile .load-btn {
+    background: rgba(139, 92, 246, 0.2);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    color: var(--neon-purple);
+    margin-left: 6px;
+}
+.user-profile .load-btn:hover {
+    background: rgba(139, 92, 246, 0.35);
+    border-color: rgba(139, 92, 246, 0.6);
+}
+
+.user-profile .logout-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    margin-left: 6px;
+}
+.user-profile .logout-btn:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
     color: var(--negative);
+}
+
+/* Hide text labels on profile buttons when space is narrow */
+@media (max-width: 1024px) {
+    .user-profile .btn-text {
+        display: none;
+    }
+    .user-profile .sync-btn,
+    .user-profile .load-btn,
+    .user-profile .logout-btn {
+        width: 32px;
+        padding: 4px 8px;
+    }
 }
 
 /* Login Modal Specifics */
@@ -2840,7 +2885,8 @@ body {
         display: none !important; /* Hide user name to save space */
     }
     .user-profile .sync-btn, 
-    .user-profile .load-btn {
+    .user-profile .load-btn,
+    .user-profile .logout-btn {
         padding: 4px 8px !important;
         width: 32px !important;
         height: 28px !important;
@@ -2848,9 +2894,6 @@ body {
         align-items: center !important;
         justify-content: center !important;
         margin: 0 !important;
-    }
-    .user-profile .logout-btn {
-        margin-left: 2px !important;
     }
 
     /* 5. Responsive Search & Toolbar */

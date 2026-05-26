@@ -443,6 +443,7 @@ async function fetchRealData(ticker, rangeKey = '1d', retries = 3) {
                 return {
                     data: cleanData,
                     previousClose: previousClose,
+                    dailyPreviousClose: result.meta?.regularMarketPreviousClose || previousClose,
                     companyName: companyName,
                     isMock: false
                 };
@@ -734,10 +735,12 @@ async function initSingleChart(key) {
     const latestPrice = allData[allData.length - 1].price;
     lastTimestamps[key] = allData[allData.length - 1].time.getTime();
     config.previousClose = apiResult.previousClose;
+    config.dailyPreviousClose = apiResult.dailyPreviousClose;
     config.companyName = apiResult.companyName;
 
-    // Dynamically calculate color based on change compared to previous close
-    const change = latestPrice - config.previousClose;
+    // Dynamically calculate color based on change compared to the first price of the period
+    const firstPrice = allData[0].price || allData[0].c;
+    const change = latestPrice - firstPrice;
     const isPositive = change >= 0;
     const activeColor = isPositive ? '#ef4444' : '#3b82f6';
     const activeBgColor = isPositive ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)';
@@ -882,7 +885,7 @@ async function initSingleChart(key) {
         plugins: [previousCloseLinePlugin]
     });
 
-    updateDOM(key, latestPrice, config.previousClose);
+    updateDOM(key, latestPrice, config.dailyPreviousClose);
     return true;
 }
 
@@ -992,6 +995,10 @@ function startRealtimeUpdates() {
             const latestTimeStr = formatChartLabel(latestPoint.time, currentRangeKey);
             const latestTimestamp = latestPoint.time.getTime();
 
+            // Save previous close values
+            config.previousClose = apiResult.previousClose;
+            config.dailyPreviousClose = apiResult.dailyPreviousClose;
+
             // Only update chart if we received a newer data point
             if (latestTimestamp > lastTimestamps[key]) {
                 lastTimestamps[key] = latestTimestamp;
@@ -1036,8 +1043,10 @@ function startRealtimeUpdates() {
                 }
             }
             
-            // Dynamically update chart line color based on price change
-            const isPositive = (latestPoint.price - config.previousClose) >= 0;
+            // Dynamically update chart line color based on period price change
+            const firstPoint = chart.data.datasets[0].data[0];
+            const firstPrice = firstPoint ? (firstPoint.y !== undefined ? firstPoint.y : (firstPoint.c !== undefined ? firstPoint.c : firstPoint)) : latestPoint.price;
+            const isPositive = (latestPoint.price - firstPrice) >= 0;
             const activeColor = isPositive ? '#ef4444' : '#3b82f6';
             const activeBgColor = isPositive ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)';
             
@@ -1057,7 +1066,7 @@ function startRealtimeUpdates() {
             chart.update('none');
 
             // Always update UI to ensure it reflects latest status
-            updateDOM(key, latestPoint.price, config.previousClose);
+            updateDOM(key, latestPoint.price, config.dailyPreviousClose);
             
             // If modal is open for this chart, update it too
             if (currentModalKey === key && modalChartInstance && modalChartInstance.ctx) {
@@ -4193,7 +4202,8 @@ function setupLogin() {
                 return;
             }
             
-            syncBtn.textContent = '⏳';
+            const syncIcon = syncBtn.querySelector('.btn-icon');
+            if (syncIcon) syncIcon.textContent = '⏳';
             syncBtn.style.background = 'rgba(245, 158, 11, 0.2)';
             syncBtn.style.borderColor = 'rgba(245, 158, 11, 0.4)';
             syncBtn.style.color = '#fbbf24';
@@ -4201,26 +4211,26 @@ function setupLogin() {
             try {
                 const success = await syncDataToGoogleDrive();
                 if (success) {
-                    syncBtn.textContent = '✅';
+                    if (syncIcon) syncIcon.textContent = '✅';
                     syncBtn.style.background = 'rgba(16, 185, 129, 0.2)';
                     syncBtn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
                     syncBtn.style.color = '#34d399';
                 } else {
-                    syncBtn.textContent = '❌';
+                    if (syncIcon) syncIcon.textContent = '❌';
                     syncBtn.style.background = 'rgba(239, 68, 68, 0.2)';
                     syncBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
                     syncBtn.style.color = '#f87171';
                 }
             } catch (err) {
                 console.error(err);
-                syncBtn.textContent = '❌';
+                if (syncIcon) syncIcon.textContent = '❌';
                 syncBtn.style.background = 'rgba(239, 68, 68, 0.2)';
                 syncBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
                 syncBtn.style.color = '#f87171';
             }
             
             setTimeout(() => {
-                syncBtn.innerHTML = '☁️';
+                if (syncIcon) syncIcon.textContent = '☁️';
                 syncBtn.style.background = 'rgba(59, 130, 246, 0.2)';
                 syncBtn.style.borderColor = 'rgba(59, 130, 246, 0.4)';
                 syncBtn.style.color = 'var(--neon-blue)';
@@ -4237,7 +4247,8 @@ function setupLogin() {
                 return;
             }
             
-            loadBtn.textContent = '⏳';
+            const loadIcon = loadBtn.querySelector('.btn-icon');
+            if (loadIcon) loadIcon.textContent = '⏳';
             loadBtn.style.background = 'rgba(245, 158, 11, 0.2)';
             loadBtn.style.borderColor = 'rgba(245, 158, 11, 0.4)';
             loadBtn.style.color = '#fbbf24';
@@ -4245,26 +4256,26 @@ function setupLogin() {
             try {
                 const success = await loadDataFromGoogleDrive();
                 if (success) {
-                    loadBtn.textContent = '✅';
+                    if (loadIcon) loadIcon.textContent = '✅';
                     loadBtn.style.background = 'rgba(16, 185, 129, 0.2)';
                     loadBtn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
                     loadBtn.style.color = '#34d399';
                 } else {
-                    loadBtn.textContent = '❌';
+                    if (loadIcon) loadIcon.textContent = '❌';
                     loadBtn.style.background = 'rgba(239, 68, 68, 0.2)';
                     loadBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
                     loadBtn.style.color = '#f87171';
                 }
             } catch (err) {
                 console.error(err);
-                loadBtn.textContent = '❌';
+                if (loadIcon) loadIcon.textContent = '❌';
                 loadBtn.style.background = 'rgba(239, 68, 68, 0.2)';
                 loadBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
                 loadBtn.style.color = '#f87171';
             }
             
             setTimeout(() => {
-                loadBtn.innerHTML = '🔄';
+                if (loadIcon) loadIcon.textContent = '🔄';
                 loadBtn.style.background = 'rgba(139, 92, 246, 0.2)';
                 loadBtn.style.borderColor = 'rgba(139, 92, 246, 0.4)';
                 loadBtn.style.color = 'var(--neon-purple)';
@@ -5347,9 +5358,18 @@ function generateMockHistory(ticker, rangeKey) {
         });
     }
     
+    let dailyPreviousClose;
+    if (rangeKey === '1d' || rangeKey === '1h') {
+        dailyPreviousClose = data.length > 0 ? data[0].c : basePrice;
+    } else {
+        const mock1d = generateMockHistory(ticker, '1d');
+        dailyPreviousClose = mock1d.previousClose;
+    }
+
     return {
         data: data,
         previousClose: data.length > 0 ? data[0].c : basePrice,
+        dailyPreviousClose: dailyPreviousClose,
         companyName: name,
         isMock: true
     };
