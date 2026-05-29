@@ -8,7 +8,7 @@ window.onunhandledrejection = function (event) {
 };
 
 // Global state for time range
-let currentRangeKey = '6mo';
+let currentRangeKey = '1d';
 let currentChartType = 'line'; // 'line' or 'candlestick'
 const hasSavedLogin = localStorage.getItem('google_access_token') && localStorage.getItem('google_token_acquired_at') && (Date.now() - parseInt(localStorage.getItem('google_token_acquired_at'))) < 50 * 60 * 1000;
 let recentSearches = [];
