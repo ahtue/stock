@@ -3299,13 +3299,30 @@ body {
 
 /* Hide text labels on narrow screens */
 @media (max-width: 1024px) {
-    .reorder-trigger-btn .btn-text {
+    .reorder-trigger-btn .btn-text,
+    #dashboard-refresh-btn .btn-text,
+    #portfolio-refresh-btn .btn-text {
         display: none;
     }
-    .reorder-trigger-btn {
+    .reorder-trigger-btn,
+    #dashboard-refresh-btn,
+    #portfolio-refresh-btn {
         width: 38px;
         padding: 0 !important;
+        justify-content: center;
+        display: inline-flex;
+        align-items: center;
     }
+}
+
+/* Refresh button icon rotation animation */
+.refresh-icon {
+    display: inline-block;
+    transition: transform 0.3s ease;
+}
+
+.glass-btn.loading .refresh-icon {
+    animation: spin 1.2s linear infinite;
 }
 
 

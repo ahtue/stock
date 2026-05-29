@@ -2536,6 +2536,76 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.key === 'Enter') handleAddChart();
     });
 
+    // ── Dashboard Refresh Button ──────────────────────────────
+    const dbRefreshBtn = document.getElementById('dashboard-refresh-btn');
+    if (dbRefreshBtn) {
+        dbRefreshBtn.addEventListener('click', async () => {
+            if (dbRefreshBtn.classList.contains('loading')) return;
+            dbRefreshBtn.classList.add('loading');
+            dbRefreshBtn.disabled = true;
+            try {
+                // Clear any failed states and load all
+                for (const key of Object.keys(indices)) {
+                    if (document.getElementById(`${indices[key].elementId}-price`)) {
+                        document.getElementById(`${indices[key].elementId}-price`).textContent = 'Loading...';
+                    }
+                    await initSingleChart(key);
+                    await sleep(300); // stagger requests to avoid rate limits
+                }
+                updatePortfolioTotals();
+            } catch (e) {
+                console.error("Dashboard refresh failed:", e);
+            } finally {
+                dbRefreshBtn.classList.remove('loading');
+                dbRefreshBtn.disabled = false;
+            }
+        });
+    }
+
+    // ── Portfolio Refresh Button ───────────────────────────────
+    const pfRefreshBtn = document.getElementById('portfolio-refresh-btn');
+    if (pfRefreshBtn) {
+        pfRefreshBtn.addEventListener('click', async () => {
+            if (pfRefreshBtn.classList.contains('loading')) return;
+            pfRefreshBtn.classList.add('loading');
+            pfRefreshBtn.disabled = true;
+            try {
+                await fetchExchangeRate();
+                for (const item of portfolio) {
+                    if (charts[item.key]) {
+                        // Refresh chart and its price
+                        await initSingleChart(item.key);
+                    } else {
+                        // Refresh portfolio item price
+                        const apiResult = await fetchRealData(item.ticker, '1d', 1);
+                        if (apiResult && apiResult.data.length > 0) {
+                            if (apiResult.isMock && item.lastPrice) {
+                                currentPortfolioPrices[item.key] = item.lastPrice;
+                                currentPortfolioPrevCloses[item.key] = item.lastPrevClose || item.lastPrice;
+                            } else {
+                                const fetchedPrice = apiResult.data[apiResult.data.length - 1].price;
+                                currentPortfolioPrices[item.key] = fetchedPrice;
+                                currentPortfolioPrevCloses[item.key] = apiResult.previousClose || 0;
+                                if (!apiResult.isMock) {
+                                    item.lastPrice = fetchedPrice;
+                                    item.lastPrevClose = apiResult.previousClose || 0;
+                                }
+                            }
+                        }
+                    }
+                    updatePortfolioTotals();
+                    await sleep(300); // stagger requests
+                }
+                renderPortfolio();
+            } catch (e) {
+                console.error("Portfolio refresh failed:", e);
+            } finally {
+                pfRefreshBtn.classList.remove('loading');
+                pfRefreshBtn.disabled = false;
+            }
+        });
+    }
+
     setupCardClickListeners();
     setupLogin();
     setupReportModalListeners();
