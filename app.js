@@ -5593,48 +5593,56 @@ function calculateAUMScore(aumEok) {
     return parseFloat(score.toFixed(1));
 }
 
-function calculateMomentumScore(historicalData, currentPrice) {
+function calculateMomentumScore(historicalData, currentPrice, pConfig) {
     const len = historicalData.length;
     if (len < 20) return 50;
     
+    const config = pConfig || { shortMA: 20, midMA: 60, longMA: 120, label: "12개월" };
     const pToday = currentPrice;
-    const idx3m = Math.max(0, len - 1 - 60);
-    const idx6m = Math.max(0, len - 1 - 120);
     
-    const p3m = historicalData[idx3m].c;
-    const p6m = historicalData[idx6m].c;
+    const idxShort = Math.max(0, len - 1 - config.midMA);
+    const idxLong = Math.max(0, len - 1 - config.longMA);
     
-    const ret3m = (pToday / p3m) - 1;
-    const ret6m = (pToday / p6m) - 1;
+    const pShort = historicalData[idxShort].c;
+    const pLong = historicalData[idxLong].c;
     
-    let score3m = 50;
-    if (ret3m >= 0.15) score3m = 100;
-    else if (ret3m <= -0.15) score3m = 0;
-    else score3m = 50 + (ret3m / 0.15) * 50;
+    const retShort = (pToday / pShort) - 1;
+    const retLong = (pToday / pLong) - 1;
     
-    let score6m = 50;
-    if (ret6m >= 0.25) score6m = 100;
-    else if (ret6m <= -0.25) score6m = 0;
-    else score6m = 50 + (ret6m / 0.25) * 50;
+    const shortFactor = config.midMA / 60;
+    const longFactor = config.longMA / 120;
     
-    const ma20 = getSMA(historicalData, 20);
-    const ma60 = getSMA(historicalData, 60);
-    const ma120 = getSMA(historicalData, 120);
+    const targetRetShort = 0.15 * shortFactor;
+    const targetRetLong = 0.25 * longFactor;
+    
+    let scoreShort = 50;
+    if (retShort >= targetRetShort) scoreShort = 100;
+    else if (retShort <= -targetRetShort) scoreShort = 0;
+    else scoreShort = 50 + (retShort / targetRetShort) * 50;
+    
+    let scoreLong = 50;
+    if (retLong >= targetRetLong) scoreLong = 100;
+    else if (retLong <= -targetRetLong) scoreLong = 0;
+    else scoreLong = 50 + (retLong / targetRetLong) * 50;
+    
+    const maShort = getSMA(historicalData, config.shortMA);
+    const maMid = getSMA(historicalData, config.midMA);
+    const maLong = getSMA(historicalData, config.longMA);
     
     let maScore = 0;
-    if (ma20 !== null && ma60 !== null && ma120 !== null) {
-        if (ma20 > ma60 && ma60 > ma120) {
+    if (maShort !== null && maMid !== null && maLong !== null) {
+        if (maShort > maMid && maMid > maLong) {
             maScore = 100;
-        } else if (ma20 > ma60) {
+        } else if (maShort > maMid) {
             maScore = 50;
         }
-    } else if (ma20 !== null && ma60 !== null) {
-        if (ma20 > ma60) maScore = 70;
+    } else if (maShort !== null && maMid !== null) {
+        if (maShort > maMid) maScore = 70;
     } else {
         maScore = 50;
     }
     
-    const totalMomentum = (score3m * 0.35) + (score6m * 0.35) + (maScore * 0.30);
+    const totalMomentum = (scoreShort * 0.35) + (scoreLong * 0.35) + (maScore * 0.30);
     return parseFloat(totalMomentum.toFixed(1));
 }
 
@@ -5690,7 +5698,7 @@ function calculateDividendScore(dividendYield) {
     return parseFloat(score.toFixed(1));
 }
 
-function calculateETFScore(ticker, historical) {
+function calculateETFScore(ticker, historical, pConfig) {
     if (!ticker || typeof ETF_DATABASE === 'undefined') return null;
     const dbEntry = ETF_DATABASE[ticker];
     if (!dbEntry) return null;
@@ -5710,7 +5718,7 @@ function calculateETFScore(ticker, historical) {
     
     const volumeScore = calculateVolumeScore(avgVolume5, latestPrice, ticker);
     const aumScore = calculateAUMScore(dbEntry.aum);
-    const momentumScore = calculateMomentumScore(data, latestPrice);
+    const momentumScore = calculateMomentumScore(data, latestPrice, pConfig);
     const supplyData = calculateSupplyScore(ticker);
     const supplyScore = supplyData.score;
     const terScore = calculateTERScore(dbEntry.ter, dbEntry.category);
@@ -6626,6 +6634,12 @@ function getSMA(data, period) {
     return sum / period;
 }
 
+const periodConfig = {
+    "4m": { shortMA: 10, midMA: 20, longMA: 40, breakoutDays: 10, volDays: 10, label: "4개월" },
+    "8m": { shortMA: 15, midMA: 40, longMA: 80, breakoutDays: 15, volDays: 15, label: "8개월" },
+    "12m": { shortMA: 20, midMA: 60, longMA: 120, breakoutDays: 20, volDays: 20, label: "12개월" }
+};
+
 // Screener Sorting State and Functions
 let lastScreenerResults = [];
 let currentScreenerSort = {
@@ -6937,6 +6951,10 @@ async function runScreener() {
     };
     updateScreenerHeaderUI();
 
+    const periodSelect = document.getElementById('screener-period-select');
+    const periodKey = periodSelect ? periodSelect.value : '12m';
+    const activePeriodConfig = periodConfig[periodKey] || periodConfig['12m'];
+
     // Step 1: Filter tickers to scan based on user selection
     const selection = groupSelect.value;
     let scanList = [];
@@ -7036,8 +7054,9 @@ async function runScreener() {
             const isETFSelection = selection.startsWith('ETF_') || ETF_DATABASE[ticker] !== undefined;
             
             if (isETFSelection) {
-                const etfRes = calculateETFScore(ticker, historical);
+                const etfRes = calculateETFScore(ticker, historical, activePeriodConfig);
                 if (etfRes) {
+                    etfRes.periodConfig = activePeriodConfig;
                     lastScreenerResults.push(etfRes);
                     
                     // Sort results dynamically in real-time by totalScore descending
@@ -7097,26 +7116,28 @@ async function runScreener() {
                     
                     const totalScore = pbrScore + roeScore + divScore;
                     
-                    // Technical variables for Stock Detail Modal
+                    // Technical variables for Stock Detail Modal based on period config
                     const ma5 = getSMA(data, 5);
-                    const ma20 = getSMA(data, 20);
-                    const ma60 = getSMA(data, 60);
-                    const ma120 = getSMA(data, 120);
-                    const maArrangement = (ma5 !== null && ma20 !== null && ma60 !== null && ma120 !== null) && 
-                                          (ma5 > ma20) && (ma20 > ma60) && (ma60 > ma120);
-                    const disparity = ma20 ? (close / ma20) * 100 : 0;
+                    const maShort = getSMA(data, activePeriodConfig.shortMA);
+                    const maMid = getSMA(data, activePeriodConfig.midMA);
+                    const maLong = getSMA(data, activePeriodConfig.longMA);
+                    const maArrangement = (maShort !== null && maMid !== null && maLong !== null) && 
+                                          (maShort > maMid) && (maMid > maLong);
+                    const disparity = maShort ? (close / maShort) * 100 : 0;
                     const isDisparitySafe = disparity <= 110.0;
                     
                     let volumeSum20 = 0;
-                    for (let j = len - 21; j < len - 1; j++) {
+                    const volDays = activePeriodConfig.volDays;
+                    for (let j = len - 1 - volDays; j < len - 1; j++) {
                         if (data[j]) volumeSum20 += data[j].v || 0;
                     }
-                    const avgVolume20 = volumeSum20 / 20;
+                    const avgVolume20 = volDays > 0 ? volumeSum20 / volDays : 0;
                     const currentVolume = latestCandle.v || 0;
                     const volumeSpikeRatio = avgVolume20 > 0 ? (currentVolume / avgVolume20) * 100 : 0;
                     
                     let highestClose20 = 0;
-                    for (let j = len - 21; j < len - 1; j++) {
+                    const breakoutDays = activePeriodConfig.breakoutDays;
+                    for (let j = len - 1 - breakoutDays; j < len - 1; j++) {
                         if (data[j] && data[j].c > highestClose20) {
                             highestClose20 = data[j].c;
                         }
@@ -7152,17 +7173,26 @@ async function runScreener() {
                         matchCount: hasValueup ? 3 : 2,
                         maArrangement: maArrangement,
                         isDisparitySafe: isDisparitySafe,
+                        periodConfig: activePeriodConfig,
                         detail: {
                             maAlignment: maArrangement ? `정배열 진입` : `정배열 아님`,
-                            ma5, ma20, ma60, ma120,
+                            maShortLabel: `${activePeriodConfig.shortMA}일선`,
+                            maMidLabel: `${activePeriodConfig.midMA}일선`,
+                            maLongLabel: `${activePeriodConfig.longMA}일선`,
+                            maShort: maShort,
+                            maMid: maMid,
+                            maLong: maLong,
+                            ma5, ma20: maShort, ma60: maMid, ma120: maLong,
                             disparity: disparity.toFixed(1) + '%',
                             disparityVal: disparity,
                             volumeRatio: volumeSpikeRatio.toFixed(0) + '%',
                             volumeRatioVal: volumeSpikeRatio,
                             currentVolume,
                             avgVolume20,
+                            volDays: activePeriodConfig.volDays,
                             isBreakout: isBreakout ? '돌파 완료' : '돌파 대기',
                             highestClose20,
+                            breakoutDays: activePeriodConfig.breakoutDays,
                             pivot: { pp, r1, s1, r2, s2 },
                             stoploss: { pct: stoploss3pct, low: stoploss5day },
                             fund: { opMargin: vud.roe, revGrowth: vud.roe * 1.2 },
@@ -7188,35 +7218,37 @@ async function runScreener() {
                     continue;
                 }
                 
-                // 1. Moving Averages
+                // 1. Moving Averages based on period config
                 const ma5 = getSMA(data, 5);
-                const ma20 = getSMA(data, 20);
-                const ma60 = getSMA(data, 60);
-                const ma120 = getSMA(data, 120);
+                const maShort = getSMA(data, activePeriodConfig.shortMA);
+                const maMid = getSMA(data, activePeriodConfig.midMA);
+                const maLong = getSMA(data, activePeriodConfig.longMA);
 
                 // 2. Alignment & Disparity
                 let maArrangement = false;
-                if (ma5 !== null && ma20 !== null && ma60 !== null && ma120 !== null) {
-                    maArrangement = (ma5 > ma20) && (ma20 > ma60) && (ma60 > ma120);
+                if (maShort !== null && maMid !== null && maLong !== null) {
+                    maArrangement = (maShort > maMid) && (maMid > maLong);
                 }
-                const disparity = ma20 ? (close / ma20) * 100 : 0;
+                const disparity = maShort ? (close / maShort) * 100 : 0;
                 const isDisparitySafe = disparity <= 110.0;
 
                 // 3. Volume average and current volume
                 let volumeSum20 = 0;
-                for (let j = len - 21; j < len - 1; j++) {
+                const volDays = activePeriodConfig.volDays;
+                for (let j = len - 1 - volDays; j < len - 1; j++) {
                     if (data[j]) volumeSum20 += data[j].v || 0;
                 }
-                const avgVolume20 = volumeSum20 / 20;
+                const avgVolume20 = volDays > 0 ? volumeSum20 / volDays : 0;
                 const currentVolume = latestCandle.v || 0;
                 
-                // 20-day average volume spike check (500% explosion)
+                // Average volume spike check (500% explosion)
                 const volumeSpikeRatio = avgVolume20 > 0 ? (currentVolume / avgVolume20) * 100 : 0;
                 const isVolumePop = volumeSpikeRatio >= 500.0;
 
                 // 4. Breakout check
                 let highestClose20 = 0;
-                for (let j = len - 21; j < len - 1; j++) {
+                const breakoutDays = activePeriodConfig.breakoutDays;
+                for (let j = len - 1 - breakoutDays; j < len - 1; j++) {
                     if (data[j] && data[j].c > highestClose20) {
                         highestClose20 = data[j].c;
                     }
@@ -7263,8 +7295,8 @@ async function runScreener() {
                 if (matchCount >= 1) {
                     const isKRW = ticker.endsWith('.KS') || ticker.endsWith('.KQ');
                     const maDetailStr = maArrangement 
-                        ? `5일:${formatMAValue(ma5, isKRW)} > 20일:${formatMAValue(ma20, isKRW)} > 60일:${formatMAValue(ma60, isKRW)} > 120일:${formatMAValue(ma120, isKRW)}`
-                        : `5일:${formatMAValue(ma5, isKRW)}, 20일:${formatMAValue(ma20, isKRW)}, 60일:${formatMAValue(ma60, isKRW)}, 120일:${formatMAValue(ma120, isKRW)}`;
+                        ? `${activePeriodConfig.shortMA}일:${formatMAValue(maShort, isKRW)} > ${activePeriodConfig.midMA}일:${formatMAValue(maMid, isKRW)} > ${activePeriodConfig.longMA}일:${formatMAValue(maLong, isKRW)}`
+                        : `${activePeriodConfig.shortMA}일:${formatMAValue(maShort, isKRW)}, ${activePeriodConfig.midMA}일:${formatMAValue(maMid, isKRW)}, ${activePeriodConfig.longMA}일:${formatMAValue(maLong, isKRW)}`;
 
                     const stockResult = {
                         ticker: ticker,
@@ -7276,17 +7308,26 @@ async function runScreener() {
                         matchCount,
                         maArrangement,
                         isDisparitySafe,
+                        periodConfig: activePeriodConfig,
                         detail: {
                             maAlignment: maArrangement ? `정배열 진입` : `정배열 아님`,
-                            ma5, ma20, ma60, ma120,
+                            maShortLabel: `${activePeriodConfig.shortMA}일선`,
+                            maMidLabel: `${activePeriodConfig.midMA}일선`,
+                            maLongLabel: `${activePeriodConfig.longMA}일선`,
+                            maShort: maShort,
+                            maMid: maMid,
+                            maLong: maLong,
+                            ma5, ma20: maShort, ma60: maMid, ma120: maLong,
                             disparity: disparity.toFixed(1) + '%',
                             disparityVal: disparity,
                             volumeRatio: volumeSpikeRatio.toFixed(0) + '%',
                             volumeRatioVal: volumeSpikeRatio,
                             currentVolume,
                             avgVolume20,
+                            volDays: activePeriodConfig.volDays,
                             isBreakout: isBreakout ? '돌파 완료' : '돌파 대기',
                             highestClose20,
+                            breakoutDays: activePeriodConfig.breakoutDays,
                             pivot: { pp, r1, s1, r2, s2 },
                             stoploss: { pct: stoploss3pct, low: stoploss5day },
                             fund: fund,
@@ -7415,9 +7456,13 @@ function appendScreenerRow(res) {
             const c4Class = res.scores.supply >= 70 ? 'active' : 'inactive';
             const c5Class = (res.category === 'INCOME' ? res.scores.dividend >= 70 : res.scores.ter >= 75) ? 'active' : 'inactive';
 
+            const pConfig = res.periodConfig || { shortMA: 20, midMA: 60, longMA: 120, breakoutDays: 20, volDays: 20, label: "12개월" };
+            const shortMonths = Math.round(pConfig.midMA / 20);
+            const longMonths = Math.round(pConfig.longMA / 20);
+
             const c1Title = "거래유동성: 5일 평균 거래유동성 수치 및 괴리율 패널티 여부 판정 (가중치 25%)";
             const c2Title = "자산규모: 조기상장폐지 리스크 제어를 고려한 순자산 규모 가산 (가중치 15%)";
-            const c3Title = "듀얼추세: 3개월 + 6개월 변동 듀얼 모멘텀 및 핵심 이동평균선 상회도 (가중치 30% / 배당형 10%)";
+            const c3Title = `듀얼추세: ${shortMonths}개월 + ${longMonths}개월 변동 듀얼 모멘텀 및 핵심 이동평균선 상회도 (가중치 30% / 배당형 10%)`;
             const c4Title = "세력수급: 기관+외국인+LP 공급자의 최근 5일간 누적 순매수 대금 수준 가중 (가중치 20%)";
             const c5Title = "비용/배율: 총보수율(TER)의 비용 효율성 및 배당형의 경우 배당수익률 반영도 (가중치 10% / 배당형 30%)";
 
@@ -7466,13 +7511,20 @@ function appendScreenerRow(res) {
         const c3Class = res.match3 ? 'active' : 'inactive';
         const c4Class = res.match4 ? 'active' : 'inactive';
 
-        const c1Title = "주도주 & 돌파: 당일 거래량이 20일 평균 대비 500% 이상 급증하고, 주가가 20일 최고가를 돌파하는 강한 상승 시그널";
+        const pConfig = res.periodConfig || { shortMA: 20, midMA: 60, longMA: 120, breakoutDays: 20, volDays: 20, label: "12개월" };
+        const shortLabel = res.detail ? (res.detail.maShortLabel || `${pConfig.shortMA}일선`) : `${pConfig.shortMA}일선`;
+        const midLabel = res.detail ? (res.detail.maMidLabel || `${pConfig.midMA}일선`) : `${pConfig.midMA}일선`;
+        const longLabel = res.detail ? (res.detail.maLongLabel || `${pConfig.longMA}일선`) : `${pConfig.longMA}일선`;
+        const volDays = res.detail ? (res.detail.volDays || pConfig.volDays) : pConfig.volDays;
+        const breakoutDays = res.detail ? (res.detail.breakoutDays || pConfig.breakoutDays) : pConfig.breakoutDays;
+
+        const c1Title = `주도주 & 돌파: 당일 거래량이 ${volDays}일 평균 대비 500% 이상 급증하고, 주가가 ${breakoutDays}일 최고가를 돌파하는 강한 상승 시그널`;
         let c2Title = "이동평균선이 정배열이 아니거나 이탈되어 조정을 받고 있는 상태";
         if (res.maArrangement) {
             if (res.isDisparitySafe) {
-                c2Title = "추세추종 & 정배열: 5일 > 20일 > 60일 > 120일선 정배열 상태로 안정적 상승 추세 유지";
+                c2Title = `추세추종 & 정배열: 5일 > ${shortLabel} > ${midLabel} > ${longLabel} 정배열 상태로 안정적 상승 추세 유지`;
             } else {
-                c2Title = "이평정배열 과열 경고: 이동평균선은 정배열이나, 현재가와 20일선 괴리(이격도)가 110%를 초과하여 단기 과열 진입 상태 (추격 매수 유의)";
+                c2Title = `이평정배열 과열 경고: 이동평균선은 정배열이나, 현재가와 ${shortLabel} 괴리(이격도)가 110%를 초과하여 단기 과열 진입 상태 (추격 매수 유의)`;
             }
         }
         const c3Title = res.match3 
@@ -7815,9 +7867,13 @@ function openExpertDetailModal(res) {
             const c4Class = res.scores.supply >= 70 ? 'active' : 'inactive';
             const c5Class = (res.category === 'INCOME' ? res.scores.dividend >= 70 : res.scores.ter >= 75) ? 'active' : 'inactive';
             
+            const pConfig = res.periodConfig || { shortMA: 20, midMA: 60, longMA: 120, breakoutDays: 20, volDays: 20, label: "12개월" };
+            const shortMonths = Math.round(pConfig.midMA / 20);
+            const longMonths = Math.round(pConfig.longMA / 20);
+
             const c1Title = "거래유동성: 5일 평균 거래유동성 수치 및 괴리율 패널티 여부 판정 (가중치 25%)";
             const c2Title = "자산규모: 조기상장폐지 리스크 제어를 고려한 순자산 규모 가산 (가중치 15%)";
-            const c3Title = "듀얼추세: 3개월 + 6개월 변동 듀얼 모멘텀 및 핵심 이동평균선 상회도 (가중치 30% / 배당형 10%)";
+            const c3Title = `듀얼추세: ${shortMonths}개월 + ${longMonths}개월 변동 듀얼 모멘텀 및 핵심 이동평균선 상회도 (가중치 30% / 배당형 10%)`;
             const c4Title = "세력수급: 기관+외국인+LP 공급자의 최근 5일간 누적 순매수 대금 수준 가중 (가중치 20%)";
             const c5Title = "비용/배율: 총보수율(TER)의 비용 효율성 및 배당형의 경우 배당수익률 반영도 (가중치 10% / 배당형 30%)";
 
@@ -7889,17 +7945,24 @@ function openExpertDetailModal(res) {
         } else {
             const c1Class = res.match1 ? 'active' : 'inactive';
             
+            const pConfig = res.periodConfig || { shortMA: 20, midMA: 60, longMA: 120, breakoutDays: 20, volDays: 20, label: "12개월" };
+            const shortLabel = res.detail ? (res.detail.maShortLabel || `${pConfig.shortMA}일선`) : `${pConfig.shortMA}일선`;
+            const midLabel = res.detail ? (res.detail.maMidLabel || `${pConfig.midMA}일선`) : `${pConfig.midMA}일선`;
+            const longLabel = res.detail ? (res.detail.maLongLabel || `${pConfig.longMA}일선`) : `${pConfig.longMA}일선`;
+            const volDays = res.detail ? (res.detail.volDays || pConfig.volDays) : pConfig.volDays;
+            const breakoutDays = res.detail ? (res.detail.breakoutDays || pConfig.breakoutDays) : pConfig.breakoutDays;
+
             let c2Class = 'inactive';
             let c2Text = '이평정배열';
             let c2Title = "이동평균선이 정배열이 아니거나 이탈되어 조정을 받고 있는 상태";
             if (res.maArrangement) {
                 if (res.isDisparitySafe) {
                     c2Class = 'active';
-                    c2Title = "추세추종 & 정배열: 5일 > 20일 > 60일 > 120일선 정배열 상태로 안정적 상승 추세 유지";
+                    c2Title = `추세추종 & 정배열: 5일 > ${shortLabel} > ${midLabel} > ${longLabel} 정배열 상태로 안정적 상승 추세 유지`;
                 } else {
                     c2Class = 'warning';
                     c2Text = '이평정배열(과열)';
-                    c2Title = "이평정배열 과열 경고: 이동평균선은 정배열이나, 현재가와 20일선 괴리(이격도)가 110%를 초과하여 단기 과열 진입 상태 (추격 매수 유의)";
+                    c2Title = `이평정배열 과열 경고: 이동평균선은 정배열이나, 현재가와 ${shortLabel} 괴리(이격도)가 110%를 초과하여 단기 과열 진입 상태 (추격 매수 유의)`;
                 }
             }
             
@@ -7913,7 +7976,7 @@ function openExpertDetailModal(res) {
                 ? "우량 펀더멘털: 연간 영업이익률 10% 이상 및 분기 매출 성장률(YoY) 20% 이상을 만족하는 기업 체력 검증 통과"
                 : "영업이익률 10% 미만 또는 매출 성장률(YoY) 20% 미만으로 펀더멘털 요건 미흡";
 
-            const c1Title = "주도주 & 돌파: 당일 거래량이 20일 평균 대비 500% 이상 급증하고, 주가가 20일 최고가를 돌파하는 강한 상승 시그널";
+            const c1Title = `주도주 & 돌파: 당일 거래량이 ${volDays}일 평균 대비 500% 이상 급증하고, 주가가 ${breakoutDays}일 최고가를 돌파하는 강한 상승 시그널`;
 
             criteriaContainer.innerHTML = `
                 <span class="criteria-badge p1 ${c1Class}" data-tooltip="${c1Title}">주도주돌파</span>
@@ -7927,6 +7990,13 @@ function openExpertDetailModal(res) {
     // Technical signals
     const maAlignmentEl = document.getElementById('detail-ma-alignment');
     maAlignmentEl.style.color = ''; // Reset inline color
+    
+    const shortLabel = res.detail.maShortLabel || '20일선';
+    const midLabel = res.detail.maMidLabel || '60일선';
+    const longLabel = res.detail.maLongLabel || '120일선';
+    const volDays = res.detail.volDays || 20;
+    const breakoutDays = res.detail.breakoutDays || 20;
+
     maAlignmentEl.innerHTML = `
         <div style="display: flex; flex-direction: column; gap: 0.35rem; width: 100%;">
             <div style="font-weight: 700; color: ${res.match2 ? 'var(--positive)' : (res.maArrangement ? '#fdba74' : '#fff')};">
@@ -7934,9 +8004,9 @@ function openExpertDetailModal(res) {
             </div>
             <div style="font-size: 0.8rem; color: var(--text-secondary); display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.25rem 1rem; margin-top: 0.2rem; border-top: 1px dashed rgba(255,255,255,0.06); padding-top: 0.35rem;">
                 <div>5일선: <span style="font-family: monospace; color: #fff; font-weight: 600;">${formatItemPrice(res.detail.ma5, isKRW)}</span></div>
-                <div>20일선: <span style="font-family: monospace; color: #fff; font-weight: 600;">${formatItemPrice(res.detail.ma20, isKRW)}</span></div>
-                <div>60일선: <span style="font-family: monospace; color: #fff; font-weight: 600;">${formatItemPrice(res.detail.ma60, isKRW)}</span></div>
-                <div>120일선: <span style="font-family: monospace; color: #fff; font-weight: 600;">${formatItemPrice(res.detail.ma120, isKRW)}</span></div>
+                <div>${shortLabel}: <span style="font-family: monospace; color: #fff; font-weight: 600;">${formatItemPrice(res.detail.maShort !== undefined ? res.detail.maShort : res.detail.ma20, isKRW)}</span></div>
+                <div>${midLabel}: <span style="font-family: monospace; color: #fff; font-weight: 600;">${formatItemPrice(res.detail.maMid !== undefined ? res.detail.maMid : res.detail.ma60, isKRW)}</span></div>
+                <div>${longLabel}: <span style="font-family: monospace; color: #fff; font-weight: 600;">${formatItemPrice(res.detail.maLong !== undefined ? res.detail.maLong : res.detail.ma120, isKRW)}</span></div>
             </div>
         </div>
     `;
@@ -7951,7 +8021,7 @@ function openExpertDetailModal(res) {
             </div>
             <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.2rem; border-top: 1px dashed rgba(255,255,255,0.06); padding-top: 0.35rem;">
                 <div>현재 가격: <span style="font-family: monospace; color: #fff;">${formatItemPrice(res.price, isKRW)}</span></div>
-                <div>20일 평균선: <span style="font-family: monospace; color: #fff;">${formatItemPrice(res.detail.ma20, isKRW)}</span></div>
+                <div>${shortLabel} 평균선: <span style="font-family: monospace; color: #fff;">${formatItemPrice(res.detail.maShort !== undefined ? res.detail.maShort : res.detail.ma20, isKRW)}</span></div>
             </div>
         </div>
     `;
@@ -7979,7 +8049,7 @@ function openExpertDetailModal(res) {
             </div>
             <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.2rem; border-top: 1px dashed rgba(255,255,255,0.06); padding-top: 0.35rem;">
                 <div>당일 거래량: <span style="font-family: monospace; color: #fff;">${new Intl.NumberFormat('ko-KR').format(Math.round(res.detail.currentVolume))}주</span></div>
-                <div>20일 평균량: <span style="font-family: monospace; color: #fff;">${new Intl.NumberFormat('ko-KR').format(Math.round(res.detail.avgVolume20))}주</span></div>
+                <div>${volDays}일 평균량: <span style="font-family: monospace; color: #fff;">${new Intl.NumberFormat('ko-KR').format(Math.round(res.detail.avgVolume20))}주</span></div>
             </div>
         </div>
     `;
@@ -7995,7 +8065,7 @@ function openExpertDetailModal(res) {
             </div>
             <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.2rem; border-top: 1px dashed rgba(255,255,255,0.06); padding-top: 0.35rem;">
                 <div>현재 가격: <span style="font-family: monospace; color: #fff;">${formatItemPrice(res.price, isKRW)}</span></div>
-                <div>20일 전고점: <span style="font-family: monospace; color: #fff;">${formatItemPrice(res.detail.highestClose20, isKRW)}</span></div>
+                <div>${breakoutDays}일 전고점: <span style="font-family: monospace; color: #fff;">${formatItemPrice(res.detail.highestClose20, isKRW)}</span></div>
             </div>
         </div>
     `;
@@ -8067,26 +8137,36 @@ function openExpertDetailModal(res) {
 async function analyzeStockForDashboard(ticker) {
     if (!ticker) return;
 
-    // Check cache first
-    if (expertScreenCache[ticker]) {
-        openExpertDetailModal(expertScreenCache[ticker]);
-        return;
-    }
-
     const cleanTicker = ticker.toUpperCase();
     const isETF = typeof ETF_DATABASE !== 'undefined' && ETF_DATABASE[cleanTicker] !== undefined;
+    const periodSelect = document.getElementById('screener-period-select');
+    const periodKey = periodSelect ? periodSelect.value : '12m';
+    const activePeriodConfig = periodConfig[periodKey] || periodConfig['12m'];
+
+    // Check if raw data is already cached
+    let historical = null;
+    if (expertScreenCache[cleanTicker] && expertScreenCache[cleanTicker].data) {
+        historical = expertScreenCache[cleanTicker];
+    }
 
     if (isETF) {
         const name = ETF_DATABASE[cleanTicker].name;
         showExpertToast('⚡ ETF 분석 중', `${name} (${ticker}) ETF의 지표와 가격 추세를 분석하는 중입니다...`);
         try {
-            const historical = await fetchRealData(ticker, '1y', 2);
+            if (!historical) {
+                historical = await fetchRealData(ticker, '1y', 2);
+                if (historical && historical.data && historical.data.length > 0) {
+                    expertScreenCache[cleanTicker] = historical;
+                }
+            }
             if (!historical || !historical.data || historical.data.length < 2) {
                 showExpertToast('❌ 분석 실패', `${ticker} ETF 데이터를 로드할 수 없습니다.`);
                 return;
             }
-            const etfRes = calculateETFScore(cleanTicker, historical);
-            expertScreenCache[cleanTicker] = etfRes;
+            const etfRes = calculateETFScore(cleanTicker, historical, activePeriodConfig);
+            if (etfRes) {
+                etfRes.periodConfig = activePeriodConfig;
+            }
             openExpertDetailModal(etfRes);
             return;
         } catch (e) {
@@ -8100,7 +8180,12 @@ async function analyzeStockForDashboard(ticker) {
     showExpertToast('⚡ 고수 Pick 분석 중', `${koreanName || ticker} (${ticker}) 종목의 기술적 지표 및 재무 상태를 분석하는 중입니다...`);
 
     try {
-        const historical = await fetchRealData(ticker, '1y', 2);
+        if (!historical) {
+            historical = await fetchRealData(ticker, '1y', 2);
+            if (historical && historical.data && historical.data.length > 0) {
+                expertScreenCache[cleanTicker] = historical;
+            }
+        }
         if (!historical || !historical.data || historical.data.length < 2) {
             showExpertToast('❌ 분석 실패', `${ticker} 종목의 데이터를 로드할 수 없습니다.`);
             return;
@@ -8110,35 +8195,37 @@ async function analyzeStockForDashboard(ticker) {
         const len = data.length;
         const latestCandle = data[len - 1];
         const yesterdayCandle = data[len - 2];
-        const close = latestCandle.price;
+        const close = latestCandle.price !== undefined ? latestCandle.price : latestCandle.c;
 
         // 1. Moving Averages
         const ma5 = getSMA(data, 5);
-        const ma20 = getSMA(data, 20);
-        const ma60 = getSMA(data, 60);
-        const ma120 = getSMA(data, 120);
+        const maShort = getSMA(data, activePeriodConfig.shortMA);
+        const maMid = getSMA(data, activePeriodConfig.midMA);
+        const maLong = getSMA(data, activePeriodConfig.longMA);
 
         // 2. Alignment & Disparity
         let maArrangement = false;
-        if (ma5 !== null && ma20 !== null && ma60 !== null && ma120 !== null) {
-            maArrangement = (ma5 > ma20) && (ma20 > ma60) && (ma60 > ma120);
+        if (ma5 !== null && maShort !== null && maMid !== null && maLong !== null) {
+            maArrangement = (ma5 > maShort) && (maShort > maMid) && (maMid > maLong);
         }
-        const disparity = ma20 ? (close / ma20) * 100 : 0;
+        const disparity = maShort ? (close / maShort) * 100 : 0;
         const isDisparitySafe = disparity <= 110.0;
 
         // 3. Volume average and current volume
         let volumeSum20 = 0;
-        for (let j = len - 21; j < len - 1; j++) {
+        const volDays = activePeriodConfig.volDays;
+        for (let j = len - 1 - volDays; j < len - 1; j++) {
             if (data[j]) volumeSum20 += data[j].v || 0;
         }
-        const avgVolume20 = volumeSum20 / 20;
+        const avgVolume20 = volDays > 0 ? volumeSum20 / volDays : 0;
         const currentVolume = latestCandle.v || 0;
         const volumeSpikeRatio = avgVolume20 > 0 ? (currentVolume / avgVolume20) * 100 : 0;
         const isVolumePop = volumeSpikeRatio >= 500.0;
 
         // 4. Breakout check
         let highestClose20 = 0;
-        for (let j = len - 21; j < len - 1; j++) {
+        const breakoutDays = activePeriodConfig.breakoutDays;
+        for (let j = len - 1 - breakoutDays; j < len - 1; j++) {
             if (data[j] && data[j].c > highestClose20) {
                 highestClose20 = data[j].c;
             }
@@ -8182,11 +8269,6 @@ async function analyzeStockForDashboard(ticker) {
         const name = getKoreanName(ticker, historical.companyName || ticker);
         const exchange = ticker.endsWith('.KS') ? 'KOSPI' : (ticker.endsWith('.KQ') ? 'KOSDAQ' : 'US');
 
-        const isKRW = ticker.endsWith('.KS') || ticker.endsWith('.KQ');
-        const maDetailStr = maArrangement 
-            ? `5일:${formatMAValue(ma5, isKRW)} > 20일:${formatMAValue(ma20, isKRW)} > 60일:${formatMAValue(ma60, isKRW)} > 120일:${formatMAValue(ma120, isKRW)}`
-            : `5일:${formatMAValue(ma5, isKRW)}, 20일:${formatMAValue(ma20, isKRW)}, 60일:${formatMAValue(ma60, isKRW)}, 120일:${formatMAValue(ma120, isKRW)}`;
-
         const stockResult = {
             ticker: ticker,
             name: name,
@@ -8197,26 +8279,32 @@ async function analyzeStockForDashboard(ticker) {
             matchCount,
             maArrangement,
             isDisparitySafe,
+            periodConfig: activePeriodConfig,
             detail: {
                 maAlignment: maArrangement ? `정배열 진입` : `정배열 아님`,
-                ma5, ma20, ma60, ma120,
+                maShortLabel: `${activePeriodConfig.shortMA}일선`,
+                maMidLabel: `${activePeriodConfig.midMA}일선`,
+                maLongLabel: `${activePeriodConfig.longMA}일선`,
+                maShort: maShort,
+                maMid: maMid,
+                maLong: maLong,
+                ma5, ma20: maShort, ma60: maMid, ma120: maLong,
                 disparity: disparity.toFixed(1) + '%',
                 disparityVal: disparity,
                 volumeRatio: volumeSpikeRatio.toFixed(0) + '%',
                 volumeRatioVal: volumeSpikeRatio,
                 currentVolume,
                 avgVolume20,
+                volDays: activePeriodConfig.volDays,
                 isBreakout: isBreakout ? '돌파 완료' : '돌파 대기',
                 highestClose20,
+                breakoutDays: activePeriodConfig.breakoutDays,
                 pivot: { pp, r1, s1, r2, s2 },
                 stoploss: { pct: stoploss3pct, low: stoploss5day },
                 fund: fund,
                 recommendations: getAnalystRecommendations(ticker, close)
             }
         };
-
-        // Save cache
-        expertScreenCache[ticker] = stockResult;
 
         // Open modal
         openExpertDetailModal(stockResult);

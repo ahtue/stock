@@ -337,20 +337,30 @@
             <!-- 스크리너 컨트롤 및 진행 상황 -->
             <div class="screener-control-card glass-card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
                 <div class="screener-controls-row" style="display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
-                    <div class="screener-select-group" style="display: flex; align-items: center; gap: 0.75rem;">
-                        <label for="screener-group-select" style="font-size: 0.95rem; font-weight: 600; color: var(--text-secondary);">스크리닝 대상 :</label>
-                        <select id="screener-group-select" class="glass-select" style="min-width: 200px; padding: 0.6rem 1rem; font-weight: 600;">
-                            <option value="ALL">전체 인기 종목 (~70개)</option>
-                            <option value="KS">코스피 인기주 (KOSPI)</option>
-                            <option value="KQ">코스닥 인기주 (KOSDAQ)</option>
-                            <option value="US">미국 주요주 (US)</option>
-                            <option value="PORTFOLIO">내 포트폴리오 종목</option>
-                            <option value="ETF_ALL">전체 ETF군 스코어링</option>
-                            <option value="ETF_INDEX">지수 추정형 ETF</option>
-                            <option value="ETF_THEME">섹터/테마형 ETF</option>
-                            <option value="ETF_INCOME">배당/인컴형 ETF</option>
-                            <option value="VALUEUP_HIGH_DIV">한국형 밸류업 & 고배당 스크리닝</option>
-                        </select>
+                    <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+                        <div class="screener-select-group" style="display: flex; align-items: center; gap: 0.75rem;">
+                            <label for="screener-group-select" style="font-size: 0.95rem; font-weight: 600; color: var(--text-secondary);">스크리닝 대상 :</label>
+                            <select id="screener-group-select" class="glass-select" style="min-width: 200px; padding: 0.6rem 1rem; font-weight: 600;">
+                                <option value="ALL">전체 인기 종목 (~70개)</option>
+                                <option value="KS">코스피 인기주 (KOSPI)</option>
+                                <option value="KQ">코스닥 인기주 (KOSDAQ)</option>
+                                <option value="US">미국 주요주 (US)</option>
+                                <option value="PORTFOLIO">내 포트폴리오 종목</option>
+                                <option value="ETF_ALL">전체 ETF군 스코어링</option>
+                                <option value="ETF_INDEX">지수 추정형 ETF</option>
+                                <option value="ETF_THEME">섹터/테마형 ETF</option>
+                                <option value="ETF_INCOME">배당/인컴형 ETF</option>
+                                <option value="VALUEUP_HIGH_DIV">한국형 밸류업 & 고배당 스크리닝</option>
+                            </select>
+                        </div>
+                        <div class="screener-select-group" style="display: flex; align-items: center; gap: 0.75rem;">
+                            <label for="screener-period-select" style="font-size: 0.95rem; font-weight: 600; color: var(--text-secondary);">분석 기간 :</label>
+                            <select id="screener-period-select" class="glass-select" style="min-width: 150px; padding: 0.6rem 1rem; font-weight: 600;">
+                                <option value="4m">4개월</option>
+                                <option value="8m">8개월</option>
+                                <option value="12m" selected>12개월 (1년)</option>
+                            </select>
+                        </div>
                     </div>
                     <button id="run-screener-btn" class="glass-btn primary" style="font-weight: 700;">🔥 고수 Pick 스크리닝 시작</button>
                 </div>
