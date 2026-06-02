@@ -5737,12 +5737,14 @@ function calculateETFScore(ticker, historical, pConfig) {
     
     totalScore = parseFloat(totalScore.toFixed(1));
     
+    const calculatedPrevClose = (pConfig ? getPriceMonthsAgo(data, pConfig.months || 12) : null) || historical.previousClose || latestPrice;
+    
     return {
         ticker: ticker,
         name: dbEntry.name,
         category: dbEntry.category,
         price: latestPrice,
-        prevClose: historical.previousClose || latestPrice,
+        prevClose: calculatedPrevClose,
         totalScore: totalScore,
         scores: {
             volume: volumeScore,
@@ -6635,10 +6637,36 @@ function getSMA(data, period) {
 }
 
 const periodConfig = {
-    "4m": { shortMA: 10, midMA: 20, longMA: 40, breakoutDays: 10, volDays: 10, label: "4개월" },
-    "8m": { shortMA: 15, midMA: 40, longMA: 80, breakoutDays: 15, volDays: 15, label: "8개월" },
-    "12m": { shortMA: 20, midMA: 60, longMA: 120, breakoutDays: 20, volDays: 20, label: "12개월" }
+    "4m": { shortMA: 10, midMA: 20, longMA: 40, breakoutDays: 10, volDays: 10, label: "4개월", months: 4 },
+    "8m": { shortMA: 15, midMA: 40, longMA: 80, breakoutDays: 15, volDays: 15, label: "8개월", months: 8 },
+    "12m": { shortMA: 20, midMA: 60, longMA: 120, breakoutDays: 20, volDays: 20, label: "12개월", months: 12 }
 };
+
+// Calculate price N months ago from data
+function getPriceMonthsAgo(data, months) {
+    if (!data || data.length === 0) return null;
+    const latestCandle = data[data.length - 1];
+    const latestDate = new Date(latestCandle.time);
+    
+    // Calculate target date
+    const targetDate = new Date(latestDate);
+    targetDate.setMonth(targetDate.getMonth() - months);
+    
+    // Find the candle closest to the target date
+    let closestCandle = data[0];
+    let minDiff = Math.abs(new Date(data[0].time) - targetDate);
+    
+    for (let i = 1; i < data.length; i++) {
+        const diff = Math.abs(new Date(data[i].time) - targetDate);
+        if (diff < minDiff) {
+            minDiff = diff;
+            closestCandle = data[i];
+        }
+    }
+    
+    // Return closing price
+    return closestCandle.c !== undefined ? closestCandle.c : closestCandle.price;
+}
 
 // Screener Sorting State and Functions
 let lastScreenerResults = [];
@@ -7164,7 +7192,7 @@ async function runScreener() {
                         name: getKoreanName(ticker, historical.companyName || stock.name || ticker),
                         exchange: stock.exchange,
                         price: close,
-                        prevClose: historical.previousClose,
+                        prevClose: getPriceMonthsAgo(data, activePeriodConfig.months || 12) || historical.previousClose,
                         totalScore: totalScore,
                         pbr: vud.pbr,
                         roe: vud.roe,
@@ -7303,7 +7331,7 @@ async function runScreener() {
                         name: getKoreanName(ticker, historical.companyName || stock.name || ticker),
                         exchange: stock.exchange,
                         price: close,
-                        prevClose: historical.previousClose,
+                        prevClose: getPriceMonthsAgo(data, activePeriodConfig.months || 12) || historical.previousClose,
                         match1, match2, match3, match4,
                         matchCount,
                         maArrangement,
@@ -7996,6 +8024,28 @@ function openExpertDetailModal(res) {
     const longLabel = res.detail.maLongLabel || '120일선';
     const volDays = res.detail.volDays || 20;
     const breakoutDays = res.detail.breakoutDays || 20;
+
+    // Dynamically update stat box labels in the modal to match the selected period
+    const dispLabelEl = document.getElementById('detail-disparity') ? document.getElementById('detail-disparity').previousElementSibling : null;
+    if (dispLabelEl) dispLabelEl.textContent = `이격도 (${shortLabel} 기준)`;
+
+    const volLabelEl = document.getElementById('detail-volume-pop') ? document.getElementById('detail-volume-pop').previousElementSibling : null;
+    if (volLabelEl) volLabelEl.textContent = `거래대금 급증율 (${volDays}일 평균 대비)`;
+
+    const brkLabelEl = document.getElementById('detail-breakout') ? document.getElementById('detail-breakout').previousElementSibling : null;
+    if (brkLabelEl) brkLabelEl.textContent = `${breakoutDays}일 전고점 돌파 여부`;
+
+    // Dynamically update tooltip content in the modal to match the selected period
+    const tooltipEl = document.querySelector('#expert-detail-modal .info-tooltip-content');
+    if (tooltipEl) {
+        tooltipEl.innerHTML = `
+            <strong>기술적 시그널 현황 설명:</strong><br>
+            • <strong>이동평균선 배열</strong>: 주가가 상승 흐름을 타고 있는지(5일 > ${shortLabel} > ${midLabel} > ${longLabel} 정배열)를 분석합니다.<br>
+            • <strong>이격도</strong>: ${shortLabel} 이동평균선 대비 현재 주가의 괴리율입니다. 110%를 넘으면 단기 과열로 판정하여 추격 매수를 자제합니다.<br>
+            • <strong>거래대금 급증율</strong>: 최근 ${volDays}일 평균 거래량 대비 당일 거래량이 얼마나 급증했는지 측정합니다 (500% 이상일 때 강한 주도주).<br>
+            • <strong>전고점 돌파</strong>: 현재가가 최근 ${breakoutDays}일간의 최고가를 넘어서며 신규 상승 추세를 시작했는지 확인합니다.
+        `;
+    }
 
     maAlignmentEl.innerHTML = `
         <div style="display: flex; flex-direction: column; gap: 0.35rem; width: 100%;">
