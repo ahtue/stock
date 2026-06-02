@@ -6645,27 +6645,47 @@ const periodConfig = {
 // Calculate price N months ago from data
 function getPriceMonthsAgo(data, months) {
     if (!data || data.length === 0) return null;
-    const latestCandle = data[data.length - 1];
-    const latestDate = new Date(latestCandle.time);
-    
-    // Calculate target date
-    const targetDate = new Date(latestDate);
-    targetDate.setMonth(targetDate.getMonth() - months);
-    
-    // Find the candle closest to the target date
-    let closestCandle = data[0];
-    let minDiff = Math.abs(new Date(data[0].time) - targetDate);
-    
-    for (let i = 1; i < data.length; i++) {
-        const diff = Math.abs(new Date(data[i].time) - targetDate);
-        if (diff < minDiff) {
-            minDiff = diff;
-            closestCandle = data[i];
+    try {
+        const latestCandle = data[data.length - 1];
+        const latestDate = new Date(latestCandle.time);
+        if (isNaN(latestDate.getTime())) {
+            console.warn("[alphasnap] getPriceMonthsAgo - Invalid latest candle date:", latestCandle.time);
+            return null;
         }
+        
+        // Calculate target date
+        const targetDate = new Date(latestDate);
+        targetDate.setMonth(targetDate.getMonth() - months);
+        const targetTime = targetDate.getTime();
+        if (isNaN(targetTime)) {
+            console.warn("[alphasnap] getPriceMonthsAgo - Invalid target date calculation for months:", months);
+            return null;
+        }
+        
+        // Find the candle closest to the target date
+        let closestCandle = data[0];
+        let firstCandleTime = new Date(data[0].time).getTime();
+        let minDiff = isNaN(firstCandleTime) ? Infinity : Math.abs(firstCandleTime - targetTime);
+        
+        for (let i = 1; i < data.length; i++) {
+            const currentCandleTime = new Date(data[i].time).getTime();
+            if (isNaN(currentCandleTime)) continue;
+            
+            const diff = Math.abs(currentCandleTime - targetTime);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestCandle = data[i];
+            }
+        }
+        
+        const closestPrice = closestCandle.c !== undefined ? closestCandle.c : closestCandle.price;
+        console.log(`[alphasnap] getPriceMonthsAgo - months: ${months}, latest: ${latestDate.toLocaleDateString()}, target: ${targetDate.toLocaleDateString()}, matched: ${new Date(closestCandle.time).toLocaleDateString()}, price: ${closestPrice}`);
+        
+        return closestPrice;
+    } catch (err) {
+        console.error("[alphasnap] Error in getPriceMonthsAgo:", err);
+        return null;
     }
-    
-    // Return closing price
-    return closestCandle.c !== undefined ? closestCandle.c : closestCandle.price;
 }
 
 // Screener Sorting State and Functions
