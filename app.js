@@ -8210,26 +8210,11 @@ window.deleteSnapshot = function(id) {
 };
 
 window.openSnapshotDetail = function(id) {
-    // Open snapshot modal directly
-    openSnapshotModal();
-    
-    // Scroll to the card with the specific id in the modal
-    setTimeout(() => {
-        const targetCard = document.querySelector(`.snapshot-modal-card[data-id="${id}"]`);
-        if (targetCard) {
-            targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Add a temporary highlight effect
-            targetCard.style.borderColor = 'var(--neon-purple)';
-            targetCard.style.boxShadow = '0 0 15px rgba(139, 92, 246, 0.4)';
-            setTimeout(() => {
-                targetCard.style.borderColor = '';
-                targetCard.style.boxShadow = '';
-            }, 2000);
-        }
-    }, 400);
+    // Open snapshot modal directly and pass the ID to scroll to it
+    openSnapshotModal(id);
 };
 
-async function openSnapshotModal() {
+async function openSnapshotModal(scrollToId) {
     const modal = document.getElementById('snapshot-modal');
     if (!modal) return;
     
@@ -8254,6 +8239,24 @@ async function openSnapshotModal() {
     
     await prefetchSnapshotCurrentPrices(snapshots);
     renderSnapshotModalList(snapshots);
+
+    const targetId = (typeof scrollToId === 'string') ? scrollToId : null;
+    if (targetId) {
+        // Scroll to the card with the specific id in the modal after rendering
+        setTimeout(() => {
+            const targetCard = document.querySelector(`.snapshot-modal-card[data-id="${targetId}"]`);
+            if (targetCard) {
+                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Add a temporary highlight effect
+                targetCard.style.borderColor = 'var(--neon-purple)';
+                targetCard.style.boxShadow = '0 0 15px rgba(139, 92, 246, 0.4)';
+                setTimeout(() => {
+                    targetCard.style.borderColor = '';
+                    targetCard.style.boxShadow = '';
+                }, 2000);
+            }
+        }, 50);
+    }
 }
 
 window.openSnapshotModal = openSnapshotModal;
