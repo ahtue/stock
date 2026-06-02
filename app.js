@@ -7527,6 +7527,45 @@ async function initExpertDetailChart(ticker) {
     const activeColor = isPositive ? '#ef4444' : '#3b82f6';
     const activeBgColor = isPositive ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)';
 
+    // Update the expert detail modal header price & change dynamically to match the latest price on the graph
+    const expertPriceEl = document.getElementById('expert-detail-stock-price');
+    const expertChangeEl = document.getElementById('expert-detail-stock-change');
+    if (expertPriceEl && expertChangeEl) {
+        const isKRW = ticker.endsWith('.KS') || ticker.endsWith('.KQ');
+        const currencyUnit = isKRW ? ' KRW' : ' USD';
+        const formatNumLocal = (val) => {
+            if (isKRW) {
+                return new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 }).format(Math.round(val)) + currencyUnit;
+            } else {
+                return new Intl.NumberFormat('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val) + currencyUnit;
+            }
+        };
+
+        expertPriceEl.textContent = formatNumLocal(latestPrice);
+        
+        const prevCloseVal = (apiResult.previousClose !== undefined && apiResult.previousClose !== null) ? apiResult.previousClose : latestPrice;
+        const changeVal = latestPrice - prevCloseVal;
+        const changePct = prevCloseVal > 0 ? (changeVal / prevCloseVal) * 100 : 0;
+        
+        const absChange = Math.abs(changeVal);
+        const formattedChange = isKRW 
+            ? new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 }).format(Math.round(absChange))
+            : new Intl.NumberFormat('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(absChange);
+        const percentSign = changePct >= 0 ? '+' : '';
+        
+        expertChangeEl.classList.remove('positive', 'negative');
+        if (changeVal > 0) {
+            expertChangeEl.innerHTML = `▲ +${formattedChange} (${percentSign}${changePct.toFixed(2)}%)`;
+            expertChangeEl.classList.add('positive');
+        } else if (changeVal < 0) {
+            expertChangeEl.innerHTML = `▼ -${formattedChange} (${changePct.toFixed(2)}%)`;
+            expertChangeEl.classList.add('negative');
+        } else {
+            const zeroText = isKRW ? '0' : '0.00';
+            expertChangeEl.innerHTML = `${zeroText} (0.00%)`;
+        }
+    }
+
     const gradient = ctx.createLinearGradient(0, 0, 0, 250);
     gradient.addColorStop(0, activeBgColor);
     gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
