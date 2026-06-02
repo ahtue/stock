@@ -2108,6 +2108,17 @@ body {
     border-bottom: 1px solid var(--card-border);
 }
 
+.expert-results-table th.sortable-th {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.expert-results-table th.sortable-th:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff !important;
+}
+
 .expert-results-table tbody tr {
     cursor: pointer;
     transition: background-color 0.25s, transform 0.15s;

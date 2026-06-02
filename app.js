@@ -6592,6 +6592,101 @@ function getSMA(data, period) {
     return sum / period;
 }
 
+// Screener Sorting State and Functions
+let lastScreenerResults = [];
+let currentScreenerSort = {
+    column: null, // 'name', 'price', 'change', 'grade'
+    asc: true
+};
+
+function updateScreenerHeaderUI() {
+    const headers = {
+        name: document.getElementById('th-screener-name'),
+        price: document.getElementById('th-screener-price'),
+        change: document.getElementById('th-screener-change'),
+        grade: document.getElementById('th-screener-grade')
+    };
+
+    Object.keys(headers).forEach(key => {
+        const th = headers[key];
+        if (!th) return;
+        const iconSpan = th.querySelector('.sort-icon');
+        if (!iconSpan) return;
+
+        if (currentScreenerSort.column === key) {
+            iconSpan.textContent = currentScreenerSort.asc ? ' ▲' : ' ▼';
+            iconSpan.style.opacity = '1';
+            iconSpan.style.color = 'var(--neon-blue)';
+        } else {
+            iconSpan.textContent = ' ↕';
+            iconSpan.style.opacity = '0.3';
+            iconSpan.style.color = '';
+        }
+    });
+}
+
+function renderScreenerResults() {
+    const resultsList = document.getElementById('screener-results-list');
+    const resultsCount = document.getElementById('screener-results-count');
+    if (!resultsList) return;
+    resultsList.innerHTML = '';
+    
+    if (lastScreenerResults.length === 0) {
+        resultsList.innerHTML = `
+            <tr>
+                <td colspan="6" style="padding: 3rem; text-align: center; color: var(--text-secondary);">
+                    고수 원칙에 부합하는 종목이 발견되지 않았습니다.
+                </td>
+            </tr>
+        `;
+        if (resultsCount) resultsCount.textContent = '(0)';
+        return;
+    }
+    
+    lastScreenerResults.forEach(res => appendScreenerRow(res));
+    if (resultsCount) resultsCount.textContent = `(${lastScreenerResults.length})`;
+}
+
+function sortScreenerResults(column) {
+    if (isScreeningRunning) {
+        showExpertToast('⚠️ 정렬 불가', '스크리닝이 완료된 후에 정렬할 수 있습니다.');
+        return;
+    }
+    if (lastScreenerResults.length === 0) return;
+
+    if (currentScreenerSort.column === column) {
+        currentScreenerSort.asc = !currentScreenerSort.asc;
+    } else {
+        currentScreenerSort.column = column;
+        // Default sort direction: descending for numerical/grade, ascending for name
+        currentScreenerSort.asc = (column === 'name');
+    }
+
+    const asc = currentScreenerSort.asc;
+
+    lastScreenerResults.sort((a, b) => {
+        if (column === 'name') {
+            const nameA = a.name || '';
+            const nameB = b.name || '';
+            return asc ? nameA.localeCompare(nameB, 'ko') : nameB.localeCompare(nameA, 'ko');
+        } else if (column === 'price') {
+            return asc ? a.price - b.price : b.price - a.price;
+        } else if (column === 'change') {
+            const changeA = a.prevClose > 0 ? ((a.price - a.prevClose) / a.prevClose) * 100 : 0;
+            const changeB = b.prevClose > 0 ? ((b.price - b.prevClose) / b.prevClose) * 100 : 0;
+            return asc ? changeA - changeB : changeB - changeA;
+        } else if (column === 'grade') {
+            const scoreA = a.totalScore !== undefined ? a.totalScore : a.matchCount;
+            const scoreB = b.totalScore !== undefined ? b.totalScore : b.matchCount;
+            return asc ? scoreA - scoreB : scoreB - scoreA;
+        }
+        return 0;
+    });
+
+    renderScreenerResults();
+    updateScreenerHeaderUI();
+}
+
 // Helper to set up event listeners
 function setupExpertScreenerListeners() {
     const runBtn = document.getElementById('run-screener-btn');
@@ -6607,6 +6702,20 @@ function setupExpertScreenerListeners() {
             }
         });
     }
+
+    // Sort headers
+    const thName = document.getElementById('th-screener-name');
+    const thPrice = document.getElementById('th-screener-price');
+    const thChange = document.getElementById('th-screener-change');
+    const thGrade = document.getElementById('th-screener-grade');
+
+    if (thName) thName.addEventListener('click', () => sortScreenerResults('name'));
+    if (thPrice) thPrice.addEventListener('click', () => sortScreenerResults('price'));
+    if (thChange) thChange.addEventListener('click', () => sortScreenerResults('change'));
+    if (thGrade) thGrade.addEventListener('click', () => sortScreenerResults('grade'));
+    
+    // Initial UI update for headers
+    updateScreenerHeaderUI();
 
     // Walkthrough Guide Modal (Close listeners are registered globally on DOMContentLoaded)
     const guideBtn = document.getElementById('expert-guide-btn');
@@ -6787,6 +6896,13 @@ async function runScreener() {
     resultsList.innerHTML = '';
     resultsCount.textContent = '(0)';
 
+    lastScreenerResults = [];
+    currentScreenerSort = {
+        column: null,
+        asc: true
+    };
+    updateScreenerHeaderUI();
+
     // Step 1: Filter tickers to scan based on user selection
     const selection = groupSelect.value;
     let scanList = [];
@@ -6842,7 +6958,7 @@ async function runScreener() {
     }
 
     let completedCount = 0;
-    let matchedResults = [];
+    // lastScreenerResults is reset globally at the start of the function
 
     for (let i = 0; i < scanList.length; i++) {
         if (shouldStopScreening) {
@@ -6888,15 +7004,15 @@ async function runScreener() {
             if (isETFSelection) {
                 const etfRes = calculateETFScore(ticker, historical);
                 if (etfRes) {
-                    matchedResults.push(etfRes);
+                    lastScreenerResults.push(etfRes);
                     
                     // Sort results dynamically in real-time by totalScore descending
-                    matchedResults.sort((a, b) => b.totalScore - a.totalScore);
+                    lastScreenerResults.sort((a, b) => b.totalScore - a.totalScore);
                     
                     // Re-render all results to maintain sorted order in real-time
                     resultsList.innerHTML = '';
-                    matchedResults.forEach(res => appendScreenerRow(res));
-                    resultsCount.textContent = `(${matchedResults.length})`;
+                    lastScreenerResults.forEach(res => appendScreenerRow(res));
+                    resultsCount.textContent = `(${lastScreenerResults.length})`;
                     
                     // Show a toast for high-performing ETFs
                     if (etfRes.totalScore >= 80) {
@@ -7020,13 +7136,13 @@ async function runScreener() {
                         }
                     };
                     
-                    matchedResults.push(valueupResult);
+                    lastScreenerResults.push(valueupResult);
                     
-                    matchedResults.sort((a, b) => b.totalScore - a.totalScore);
+                    lastScreenerResults.sort((a, b) => b.totalScore - a.totalScore);
                     
                     resultsList.innerHTML = '';
-                    matchedResults.forEach(res => appendScreenerRow(res));
-                    resultsCount.textContent = `(${matchedResults.length})`;
+                    lastScreenerResults.forEach(res => appendScreenerRow(res));
+                    resultsCount.textContent = `(${lastScreenerResults.length})`;
                     
                     if (totalScore >= 80) {
                         showExpertToast(
@@ -7144,14 +7260,14 @@ async function runScreener() {
                         }
                     };
 
-                    matchedResults.push(stockResult);
+                    lastScreenerResults.push(stockResult);
 
                     // Sort stock results dynamically in real-time by matchCount descending
-                    matchedResults.sort((a, b) => b.matchCount - a.matchCount);
+                    lastScreenerResults.sort((a, b) => b.matchCount - a.matchCount);
 
                     // Re-render all results to maintain sorted order in real-time
                     resultsList.innerHTML = '';
-                    matchedResults.forEach(res => appendScreenerRow(res));
+                    lastScreenerResults.forEach(res => appendScreenerRow(res));
 
                     // Display a Toast Notification if we find a super high-quality stock!
                     // Super grade means at least 3 conditions are satisfied, including volume or MA arrangement.
@@ -7162,7 +7278,7 @@ async function runScreener() {
                         );
                     }
 
-                    resultsCount.textContent = `(${matchedResults.length})`;
+                    resultsCount.textContent = `(${lastScreenerResults.length})`;
                 }
             }
         }
@@ -7172,9 +7288,9 @@ async function runScreener() {
     progressBar.style.width = `100%`;
     percentageText.textContent = `100%`;
     progressText.textContent = shouldStopScreening ? '스크리닝 중단됨' : '스크리닝 분석 완료!';
-    detailText.textContent = `총 ${scanList.length}개 종목 분석 완료. ${matchedResults.length}개 조건 일치 종목 발굴.`;
+    detailText.textContent = `총 ${scanList.length}개 종목 분석 완료. ${lastScreenerResults.length}개 조건 일치 종목 발굴.`;
 
-    if (matchedResults.length === 0) {
+    if (lastScreenerResults.length === 0) {
         resultsList.innerHTML = `
             <tr>
                 <td colspan="6" style="padding: 3rem; text-align: center; color: var(--text-secondary);">
