@@ -6165,11 +6165,36 @@ function setupSearchCodeModalListeners() {
         filteredStocksList = allLocalStocks.filter(s => {
             // Market Filter
             const sym = s.symbol.toUpperCase();
+            const isEtf = (typeof ETF_DATABASE !== 'undefined' && ETF_DATABASE[sym] !== undefined) ||
+                          s.name.includes('KODEX') ||
+                          s.name.includes('TIGER') ||
+                          s.name.includes('KBSTAR') ||
+                          s.name.includes('ACE') ||
+                          s.name.includes('SOL') ||
+                          s.name.includes('ARIRANG') ||
+                          s.name.includes('KOSEF') ||
+                          s.name.includes('HANARO') ||
+                          s.name.includes('RISE') ||
+                          s.name.includes('PLUS') ||
+                          s.name.includes('TIMEFOLIO') ||
+                          s.name.includes('WOORI') ||
+                          sym === 'SPY' ||
+                          sym === 'QQQ' ||
+                          sym === 'DIA' ||
+                          sym === 'IVV' ||
+                          sym === 'VOO' ||
+                          s.name.toUpperCase().includes('ETF');
+
             if (currentMarketFilter === 'KOSPI') {
+                if (isEtf) return false;
                 if (s.exchange !== 'KOSPI' && !sym.endsWith('.KS')) return false;
             } else if (currentMarketFilter === 'KOSDAQ') {
+                if (isEtf) return false;
                 if (s.exchange !== 'KOSDAQ' && !sym.endsWith('.KQ')) return false;
+            } else if (currentMarketFilter === 'ETF') {
+                if (!isEtf) return false;
             } else if (currentMarketFilter === 'US') {
+                if (isEtf) return false;
                 if (s.exchange === 'KOSPI' || s.exchange === 'KOSDAQ' || sym.endsWith('.KS') || sym.endsWith('.KQ') || sym.startsWith('^')) return false;
             }
 
