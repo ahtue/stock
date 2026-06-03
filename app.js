@@ -6092,35 +6092,22 @@ function setupSearchCodeModalListeners() {
     const searchInput = document.getElementById('modal-search-input');
     const submitBtn = document.getElementById('modal-search-submit-btn');
     const resultsContainer = document.getElementById('modal-search-results');
+    const countEl = document.getElementById('modal-search-count');
+    const marketTabBtns = document.querySelectorAll('.market-tab-btn');
+    const sortBtns = document.querySelectorAll('.sort-btn');
 
     if (!searchBtn || !modal || !closeBtn || !searchInput || !submitBtn || !resultsContainer) return;
 
-    searchBtn.addEventListener('click', () => {
-        modal.classList.add('active');
-        searchInput.value = '';
-        resultsContainer.innerHTML = `
-            <div style="text-align: center; color: #64748b; padding: 40px 10px; font-size: 0.9rem;">
-                종목명이나 심볼을 입력하고 검색 버튼을 누르세요.
-            </div>
-        `;
-        setTimeout(() => searchInput.focus(), 100);
-    });
+    let allLocalStocks = []; // Array of all unique local stocks
+    let filteredStocksList = [];
+    let currentMarketFilter = 'ALL';
+    let currentSortField = 'name'; // 'name' or 'code'
+    let currentSortOrder = 'asc'; // 'asc' or 'desc'
+    let currentPage = 1;
+    const itemsPerPage = 50;
 
-    const performSearch = async () => {
-        const query = searchInput.value.trim();
-        if (!query) {
-            alert('검색어를 입력해 주세요.');
-            return;
-        }
-
-        resultsContainer.innerHTML = `
-            <div style="text-align: center; color: #f8fafc; padding: 40px 10px; font-size: 0.9rem;">
-                <span class="loading-spinner" style="display: inline-block; width: 1.5rem; height: 1.5rem; border: 2px solid rgba(255,255,255,0.1); border-radius: 50%; border-top-color: var(--neon-blue); animation: spin 1s linear infinite; margin-bottom: 8px;"></span>
-                <br>종목 검색 중...
-            </div>
-        `;
-
-        // Load local full stock database if not loaded
+    // Load full local stock databases once
+    async function loadDatabase() {
         if (!cachedKoreanStocks) {
             try {
                 const response = await fetch('korean_stocks.json');
@@ -6136,167 +6123,114 @@ function setupSearchCodeModalListeners() {
             }
         }
 
-        const cleanQuery = query.toLowerCase();
+        // Build flat array of all stocks (merge POPULAR_STOCKS and cachedKoreanStocks, avoiding duplicates)
+        const stockMap = new Map();
 
-        // 1. Search POPULAR_STOCKS
-        const localMatches = POPULAR_STOCKS.filter(s => 
-            s.name.toLowerCase().includes(cleanQuery) || 
-            s.engName.toLowerCase().includes(cleanQuery) || 
-            s.symbol.toLowerCase().includes(cleanQuery)
-        );
-
-        // 2. Search cachedKoreanStocks
-        const koreanMatches = cachedKoreanStocks.filter(s => 
-            s.name.toLowerCase().includes(cleanQuery) || 
-            s.symbol.toLowerCase().includes(cleanQuery)
-        );
-
-        // 3. Remote API search
-        let apiQuotes = [];
-        try {
-            apiQuotes = await searchYahooFinanceTicker(query);
-        } catch (e) {
-            console.warn('Remote search failed, falling back to local list:', e);
-        }
-
-        // 4. Merge results (prioritize POPULAR_STOCKS, then korean_stocks.json, then remote, then direct fallbacks)
-        const merged = new Map();
-        
-        localMatches.forEach(r => {
-            merged.set(r.symbol.toUpperCase(), {
-                symbol: r.symbol,
-                shortname: r.name,
-                longname: r.engName,
-                exchDisp: r.exchange,
-                typeDisp: "Equity",
-                quoteType: "EQUITY"
-            });
-        });
-
-        koreanMatches.forEach(r => {
-            const sym = r.symbol.toUpperCase();
-            if (!merged.has(sym)) {
-                merged.set(sym, {
-                    symbol: r.symbol,
-                    shortname: r.name,
-                    longname: r.engName || '',
-                    exchDisp: r.exchange,
-                    typeDisp: "Equity",
-                    quoteType: "EQUITY"
+        // 1. Add all from cachedKoreanStocks
+        if (Array.isArray(cachedKoreanStocks)) {
+            cachedKoreanStocks.forEach(s => {
+                const sym = s.symbol.toUpperCase();
+                stockMap.set(sym, {
+                    symbol: s.symbol,
+                    name: s.name,
+                    engName: s.engName || '',
+                    exchange: s.exchange || (s.symbol.endsWith('.KS') ? 'KOSPI' : 'KOSDAQ')
                 });
-            }
-        });
-
-        if (Array.isArray(apiQuotes)) {
-            apiQuotes.forEach(q => {
-                if (q && q.symbol) {
-                    const sym = q.symbol.toUpperCase();
-                    if (!merged.has(sym)) {
-                        merged.set(sym, q);
-                    }
-                }
             });
         }
 
-        // 5. If query looks like a ticker symbol, add it as a direct option
-        const queryUpper = query.toUpperCase();
-        const isNumeric = /^\d{6}$/.test(queryUpper);
-        const isUsTicker = /^[A-Z]{1,5}$/.test(queryUpper);
-        const isTickerWithMarket = /^[A-Z0-9.-]+$/.test(queryUpper);
-
-        if (isNumeric) {
-            let correctSym = null;
-            let correctExchange = null;
-            if (cachedKoreanStocks && Array.isArray(cachedKoreanStocks) && cachedKoreanStocks.length > 0) {
-                const found = cachedKoreanStocks.find(s => s.symbol.split('.')[0] === queryUpper);
-                if (found) {
-                    correctSym = found.symbol.toUpperCase();
-                    correctExchange = found.exchange || (correctSym.endsWith('.KS') ? 'KOSPI' : 'KOSDAQ');
-                }
-            }
-            if (!correctSym && typeof POPULAR_STOCKS !== 'undefined') {
-                const found = POPULAR_STOCKS.find(s => s.symbol.split('.')[0] === queryUpper);
-                if (found) {
-                    correctSym = found.symbol.toUpperCase();
-                    correctExchange = found.exchange || (correctSym.endsWith('.KS') ? 'KOSPI' : 'KOSDAQ');
-                }
-            }
-
-            if (correctSym) {
-                if (!merged.has(correctSym)) {
-                    merged.set(correctSym, {
-                        symbol: correctSym,
-                        shortname: `직접 추가 (${correctExchange})`,
-                        longname: correctSym,
-                        exchDisp: correctExchange,
-                        typeDisp: "Equity",
-                        quoteType: "EQUITY"
+        // 2. Add all from POPULAR_STOCKS
+        if (typeof POPULAR_STOCKS !== 'undefined' && Array.isArray(POPULAR_STOCKS)) {
+            POPULAR_STOCKS.forEach(s => {
+                const sym = s.symbol.toUpperCase();
+                if (!stockMap.has(sym)) {
+                    stockMap.set(sym, {
+                        symbol: s.symbol,
+                        name: s.name,
+                        engName: s.engName || '',
+                        exchange: s.exchange
                     });
                 }
+            });
+        }
+
+        allLocalStocks = Array.from(stockMap.values());
+    }
+
+    // Filter, sort, and render
+    function updateAndRender(resetScroll = true) {
+        const query = searchInput.value.trim().toLowerCase();
+        
+        // 1. Filter
+        filteredStocksList = allLocalStocks.filter(s => {
+            // Market Filter
+            const sym = s.symbol.toUpperCase();
+            if (currentMarketFilter === 'KOSPI') {
+                if (s.exchange !== 'KOSPI' && !sym.endsWith('.KS')) return false;
+            } else if (currentMarketFilter === 'KOSDAQ') {
+                if (s.exchange !== 'KOSDAQ' && !sym.endsWith('.KQ')) return false;
+            } else if (currentMarketFilter === 'US') {
+                if (s.exchange === 'KOSPI' || s.exchange === 'KOSDAQ' || sym.endsWith('.KS') || sym.endsWith('.KQ') || sym.startsWith('^')) return false;
+            }
+
+            // Search query filter (if any)
+            if (query) {
+                const nameMatch = s.name.toLowerCase().includes(query);
+                const symMatch = s.symbol.toLowerCase().includes(query);
+                const engMatch = s.engName && s.engName.toLowerCase().includes(query);
+                return nameMatch || symMatch || engMatch;
+            }
+
+            return true;
+        });
+
+        // 2. Sort
+        filteredStocksList.sort((a, b) => {
+            let valA, valB;
+            if (currentSortField === 'name') {
+                valA = a.name;
+                valB = b.name;
+                const comp = valA.localeCompare(valB, 'ko');
+                return currentSortOrder === 'asc' ? comp : -comp;
             } else {
-                const ksSym = `${queryUpper}.KS`;
-                const kqSym = `${queryUpper}.KQ`;
-                if (!merged.has(ksSym)) {
-                    merged.set(ksSym, {
-                        symbol: ksSym,
-                        shortname: `직접 추가 (KOSPI)`,
-                        longname: ksSym,
-                        exchDisp: "KOSPI",
-                        typeDisp: "Equity",
-                        quoteType: "EQUITY"
-                    });
-                }
-                if (!merged.has(kqSym)) {
-                    merged.set(kqSym, {
-                        symbol: kqSym,
-                        shortname: `직접 추가 (KOSDAQ)`,
-                        longname: kqSym,
-                        exchDisp: "KOSDAQ",
-                        typeDisp: "Equity",
-                        quoteType: "EQUITY"
-                    });
-                }
+                valA = a.symbol;
+                valB = b.symbol;
+                const comp = valA.localeCompare(valB);
+                return currentSortOrder === 'asc' ? comp : -comp;
             }
-        } else if (isUsTicker) {
-            if (!merged.has(queryUpper)) {
-                merged.set(queryUpper, {
-                    symbol: queryUpper,
-                    shortname: `직접 추가 (US Stock)`,
-                    longname: queryUpper,
-                    exchDisp: "US Market",
-                    typeDisp: "Equity",
-                    quoteType: "EQUITY"
-                });
-            }
-        } else if (isTickerWithMarket && queryUpper.includes('.')) {
-            const correctedQuery = correctKoreanTicker(queryUpper);
-            if (!merged.has(correctedQuery)) {
-                const isKr = correctedQuery.endsWith('.KS') || correctedQuery.endsWith('.KQ');
-                const exch = isKr ? (correctedQuery.endsWith('.KS') ? 'KOSPI' : 'KOSDAQ') : 'Direct Symbol';
-                merged.set(correctedQuery, {
-                    symbol: correctedQuery,
-                    shortname: `직접 추가` + (isKr ? ` (${exch})` : ''),
-                    longname: correctedQuery,
-                    exchDisp: exch,
-                    typeDisp: "Equity",
-                    quoteType: "EQUITY"
-                });
-            }
+        });
+
+        // Update count DOM
+        if (countEl) {
+            countEl.textContent = `종목 수: ${filteredStocksList.length.toLocaleString()}개`;
         }
 
-        const displayQuotes = Array.from(merged.values()).slice(0, 50);
-        resultsContainer.innerHTML = '';
-        
-        if (displayQuotes.length === 0) {
+        // Render page 1
+        currentPage = 1;
+        renderPage(resetScroll);
+    }
+
+    function renderPage(resetScroll = true) {
+        if (resetScroll) {
+            resultsContainer.innerHTML = '';
+            resultsContainer.scrollTop = 0;
+        }
+
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const pageItems = filteredStocksList.slice(start, end);
+
+        if (pageItems.length === 0 && currentPage === 1) {
             resultsContainer.innerHTML = `
                 <div style="text-align: center; color: #64748b; padding: 40px 10px; font-size: 0.9rem;">
-                    검색 결과가 없습니다. 다른 검색어로 시도해 보세요.
+                    검색 결과가 없습니다.
                 </div>
             `;
             return;
         }
 
-        displayQuotes.forEach(q => {
+        const fragment = document.createDocumentFragment();
+        pageItems.forEach(q => {
             const itemDiv = document.createElement('div');
             itemDiv.style.cssText = `
                 display: flex;
@@ -6310,7 +6244,7 @@ function setupSearchCodeModalListeners() {
                 cursor: pointer;
                 transition: background-color 0.2s, border-color 0.2s;
             `;
-            
+
             itemDiv.addEventListener('mouseenter', () => {
                 itemDiv.style.background = 'rgba(255, 255, 255, 0.06)';
                 itemDiv.style.borderColor = 'rgba(59, 130, 246, 0.4)';
@@ -6320,8 +6254,13 @@ function setupSearchCodeModalListeners() {
                 itemDiv.style.borderColor = 'rgba(255, 255, 255, 0.05)';
             });
 
-            const nameHtml = `<div style="font-weight: 500; color: #f8fafc; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px;">${q.shortname || q.longname || q.symbol}</div>`;
-            const exchangeHtml = `<div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">${q.exchDisp || q.exchange || ''} • ${q.typeDisp || q.quoteType || ''}</div>`;
+            let exchDisp = q.exchange || '';
+            if (exchDisp === 'NASDAQ' || exchDisp === 'NYSE') {
+                exchDisp = `미국 (${exchDisp})`;
+            }
+
+            const nameHtml = `<div style="font-weight: 500; color: #f8fafc; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px;">${q.name}</div>`;
+            const exchangeHtml = `<div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">${exchDisp} • Equity</div>`;
             const tickerHtml = `<div style="background: rgba(59, 130, 246, 0.15); color: var(--neon-blue); padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; font-family: monospace;">${q.symbol}</div>`;
 
             itemDiv.innerHTML = `
@@ -6336,14 +6275,159 @@ function setupSearchCodeModalListeners() {
                 selectTickerSearchResult(q.symbol);
             });
 
-            resultsContainer.appendChild(itemDiv);
+            fragment.appendChild(itemDiv);
         });
+
+        resultsContainer.appendChild(fragment);
+    }
+
+    const performRemoteSearch = async () => {
+        const query = searchInput.value.trim();
+        if (!query) return;
+
+        resultsContainer.innerHTML = `
+            <div style="text-align: center; color: #f8fafc; padding: 40px 10px; font-size: 0.9rem;">
+                <span class="loading-spinner" style="display: inline-block; width: 1.5rem; height: 1.5rem; border: 2px solid rgba(255,255,255,0.1); border-radius: 50%; border-top-color: var(--neon-blue); animation: spin 1s linear infinite; margin-bottom: 8px;"></span>
+                <br>해외/원격 종목 검색 중...
+            </div>
+        `;
+
+        let apiQuotes = [];
+        try {
+            apiQuotes = await searchYahooFinanceTicker(query);
+        } catch (e) {
+            console.warn('Remote search failed:', e);
+        }
+
+        if (Array.isArray(apiQuotes) && apiQuotes.length > 0) {
+            apiQuotes.forEach(q => {
+                if (q && q.symbol) {
+                    const sym = q.symbol.toUpperCase();
+                    const alreadyExists = allLocalStocks.some(s => s.symbol.toUpperCase() === sym);
+                    if (!alreadyExists) {
+                        allLocalStocks.push({
+                            symbol: q.symbol,
+                            name: q.shortname || q.longname || q.symbol,
+                            engName: q.longname || '',
+                            exchange: q.exchDisp || q.exchange || 'Remote'
+                        });
+                    }
+                }
+            });
+        }
+
+        const queryUpper = query.toUpperCase();
+        const isNumeric = /^\d{6}$/.test(queryUpper);
+        const isUsTicker = /^[A-Z]{1,5}$/.test(queryUpper);
+        const isTickerWithMarket = /^[A-Z0-9.-]+$/.test(queryUpper);
+
+        if (isNumeric) {
+            const ksSym = `${queryUpper}.KS`;
+            const kqSym = `${queryUpper}.KQ`;
+            [ksSym, kqSym].forEach(sym => {
+                const alreadyExists = allLocalStocks.some(s => s.symbol.toUpperCase() === sym);
+                if (!alreadyExists) {
+                    allLocalStocks.push({
+                        symbol: sym,
+                        name: `직접 추가 (${sym.endsWith('.KS') ? 'KOSPI' : 'KOSDAQ'})`,
+                        engName: sym,
+                        exchange: sym.endsWith('.KS') ? 'KOSPI' : 'KOSDAQ'
+                    });
+                }
+            });
+        } else if (isUsTicker) {
+            const alreadyExists = allLocalStocks.some(s => s.symbol.toUpperCase() === queryUpper);
+            if (!alreadyExists) {
+                allLocalStocks.push({
+                    symbol: queryUpper,
+                    name: `직접 추가 (미국)`,
+                    engName: queryUpper,
+                    exchange: 'US Market'
+                });
+            }
+        } else if (isTickerWithMarket && queryUpper.includes('.')) {
+            const correctedQuery = correctKoreanTicker(queryUpper);
+            const alreadyExists = allLocalStocks.some(s => s.symbol.toUpperCase() === correctedQuery.toUpperCase());
+            if (!alreadyExists) {
+                const isKr = correctedQuery.endsWith('.KS') || correctedQuery.endsWith('.KQ');
+                const exch = isKr ? (correctedQuery.endsWith('.KS') ? 'KOSPI' : 'KOSDAQ') : 'Direct Symbol';
+                allLocalStocks.push({
+                    symbol: correctedQuery,
+                    name: `직접 추가`,
+                    engName: correctedQuery,
+                    exchange: exch
+                });
+            }
+        }
+
+        updateAndRender(true);
     };
 
-    submitBtn.addEventListener('click', performSearch);
-    
+    searchBtn.addEventListener('click', async () => {
+        modal.classList.add('active');
+        searchInput.value = '';
+        
+        resultsContainer.innerHTML = `
+            <div style="text-align: center; color: #f8fafc; padding: 40px 10px; font-size: 0.9rem;">
+                <span class="loading-spinner" style="display: inline-block; width: 1.5rem; height: 1.5rem; border: 2px solid rgba(255,255,255,0.1); border-radius: 50%; border-top-color: var(--neon-blue); animation: spin 1s linear infinite; margin-bottom: 8px;"></span>
+                <br>종목 데이터 불러오는 중...
+            </div>
+        `;
+
+        await loadDatabase();
+        updateAndRender(true);
+        setTimeout(() => searchInput.focus(), 100);
+    });
+
+    marketTabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            marketTabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentMarketFilter = btn.getAttribute('data-market');
+            updateAndRender(true);
+        });
+    });
+
+    sortBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const field = btn.getAttribute('data-sort');
+            let order = btn.getAttribute('data-order') || 'asc';
+
+            if (btn.classList.contains('active')) {
+                order = order === 'asc' ? 'desc' : 'asc';
+                btn.setAttribute('data-order', order);
+            } else {
+                sortBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            }
+
+            currentSortField = field;
+            currentSortOrder = order;
+
+            const arrow = order === 'asc' ? '▲' : '▼';
+            const labelText = field === 'name' ? '종목명 순' : '코드 순';
+            btn.textContent = `${labelText} ${arrow}`;
+
+            updateAndRender(true);
+        });
+    });
+
+    searchInput.addEventListener('input', () => {
+        updateAndRender(true);
+    });
+
+    submitBtn.addEventListener('click', performRemoteSearch);
     searchInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') performSearch();
+        if (e.key === 'Enter') performRemoteSearch();
+    });
+
+    resultsContainer.addEventListener('scroll', () => {
+        if (resultsContainer.scrollHeight - resultsContainer.scrollTop - resultsContainer.clientHeight < 50) {
+            if (currentPage * itemsPerPage < filteredStocksList.length) {
+                currentPage++;
+                renderPage(false);
+            }
+        }
     });
 
     closeBtn.addEventListener('click', () => {

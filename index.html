@@ -592,19 +592,37 @@
                 </div>
             </div>
             
-            <div style="display: flex; gap: 8px; margin-bottom: 15px; width: 100%;">
+            <!-- Market Tabs -->
+            <div class="search-market-tabs">
+                <button class="market-tab-btn active" data-market="ALL">전체</button>
+                <button class="market-tab-btn" data-market="KOSPI">코스피</button>
+                <button class="market-tab-btn" data-market="KOSDAQ">코스닥</button>
+                <button class="market-tab-btn" data-market="US">미국</button>
+            </div>
+            
+            <div style="display: flex; gap: 8px; margin-bottom: 12px; width: 100%;">
                 <input type="text" id="modal-search-input" placeholder="종목명 또는 심볼 입력 (예: 삼성전자, Apple, NVDA)" style="flex: 1; padding: 0.6rem 1rem; border-radius: 0.5rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); color: #fff; outline: none; font-size: 0.9rem;" autocomplete="off">
                 <button id="modal-search-submit-btn" style="background: var(--neon-blue); color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; font-size: 0.9rem; transition: background-color 0.3s;">검색</button>
             </div>
 
+            <!-- Sorting & Total Items Count -->
+            <div class="search-controls-row">
+                <span id="modal-search-count" style="color: var(--text-secondary); font-weight: 500;">종목 수: --</span>
+                <div class="search-sort-group">
+                    <button class="sort-btn active" id="modal-sort-name-btn" data-sort="name" data-order="asc">종목명 순 ▲</button>
+                    <button class="sort-btn" id="modal-sort-code-btn" data-sort="code" data-order="asc">코드 순 ▲</button>
+                </div>
+            </div>
+
             <!-- Search Results Container -->
-            <div id="modal-search-results" style="flex: 1; overflow-y: auto; max-height: 48vh; border-radius: 8px; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.05); padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 150px;">
+            <div id="modal-search-results" style="flex: 1; overflow-y: auto; max-height: 44vh; border-radius: 8px; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.05); padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 150px;">
                 <div style="text-align: center; color: #64748b; padding: 40px 10px; font-size: 0.9rem;">
                     종목명이나 심볼을 입력하고 검색 버튼을 누르세요.
                 </div>
             </div>
         </div>
     </div>
+
 
     <!-- ── Tab: Expert Picks Detail Modal ── -->
     <div class="modal-overlay" id="expert-detail-modal">
