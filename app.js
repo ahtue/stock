@@ -6459,8 +6459,15 @@ function setupSearchCodeModalListeners() {
         modal.classList.remove('active');
     });
 
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) modal.classList.remove('active');
+    let isMouseDownOnModal = false;
+    modal.addEventListener('mousedown', (e) => {
+        isMouseDownOnModal = (e.target === modal);
+    });
+    modal.addEventListener('mouseup', (e) => {
+        if (e.target === modal && isMouseDownOnModal) {
+            modal.classList.remove('active');
+        }
+        isMouseDownOnModal = false;
     });
 }
 
@@ -6477,8 +6484,15 @@ function setupRecommendModalListeners() {
         closeBtn.addEventListener('click', () => {
             modal.classList.remove('active');
         });
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) modal.classList.remove('active');
+        let isMouseDownOnModal = false;
+        modal.addEventListener('mousedown', (e) => {
+            isMouseDownOnModal = (e.target === modal);
+        });
+        modal.addEventListener('mouseup', (e) => {
+            if (e.target === modal && isMouseDownOnModal) {
+                modal.classList.remove('active');
+            }
+            isMouseDownOnModal = false;
         });
     }
 }
