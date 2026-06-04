@@ -555,73 +555,6 @@ function updateDOM(key, price, previousClose) {
     }
 }
 
-function renderListHTML(config, allData, rangeKey = currentRangeKey) {
-    if (!allData || allData.length === 0) {
-        return `<div class="chart-list-empty" style="text-align: center; color: var(--text-secondary); padding: 2rem;">No data available</div>`;
-    }
-
-    const ticker = config.ticker || '';
-    const isKrw = ticker.endsWith('.KS') || ticker.endsWith('.KQ') || ticker === '^KS11' || ticker === '^KQ11';
-    
-    // Sort descending (newest first)
-    const reversedData = [...allData].reverse();
-    const firstPoint = allData[0];
-    const startVal = firstPoint?.price !== undefined ? firstPoint.price : (firstPoint?.c !== undefined ? firstPoint.c : firstPoint);
-
-    let html = `
-        <div class="chart-list-view">
-            <table class="chart-list-table">
-                <thead>
-                    <tr>
-                        <th>일시</th>
-                        <th>종가</th>
-                        <th>대비</th>
-                        <th>고가</th>
-                        <th>저가</th>
-                        <th>거래량</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-
-    for (const d of reversedData) {
-        const curVal = d.price !== undefined ? d.price : (d.c !== undefined ? d.c : d);
-        if (curVal === undefined || curVal === null) continue;
-        
-        const changeVal = curVal - startVal;
-        const pctChange = startVal !== 0 ? (changeVal / startVal) * 100 : 0;
-        const sign = changeVal >= 0 ? '+' : '';
-        const colorClass = changeVal > 0 ? 'positive' : (changeVal < 0 ? 'negative' : '');
-        const arrow = changeVal > 0 ? '▲' : (changeVal < 0 ? '▼' : '');
-        
-        const formattedPrice = formatPrice(curVal, isKrw, ticker);
-        const formattedHigh = d.h !== null && d.h !== undefined ? formatPrice(d.h, isKrw, ticker) : '-';
-        const formattedLow = d.l !== null && d.l !== undefined ? formatPrice(d.l, isKrw, ticker) : '-';
-        const formattedVolume = d.v !== null && d.v !== undefined ? new Intl.NumberFormat().format(d.v) : '-';
-        
-        const formattedTime = formatChartLabel(d.time || new Date(d.x || Date.now()), rangeKey);
-        
-        html += `
-            <tr>
-                <td>${formattedTime}</td>
-                <td style="font-weight: 600;">${formattedPrice}</td>
-                <td class="${colorClass}">${arrow} ${sign}${pctChange.toFixed(2)}%</td>
-                <td>${formattedHigh}</td>
-                <td>${formattedLow}</td>
-                <td>${formattedVolume}</td>
-            </tr>
-        `;
-    }
-
-    html += `
-                </tbody>
-            </table>
-        </div>
-    `;
-
-    return html;
-}
-
 const neonColors = [
     { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
     { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
@@ -648,8 +581,7 @@ function openModal(key) {
     }
     const chartData = charts[key];
     
-    if (currentChartType !== 'list' && !chartData) return; // chart not ready
-    if (currentChartType === 'list' && !config.chartData) return; // data not ready
+    if (!chartData) return; // chart not ready
 
     const modalOverlay = document.getElementById('chart-modal');
     const koreanTitle = getKoreanName(config.ticker, config.companyName || config.name);
@@ -669,35 +601,6 @@ function openModal(key) {
 
     const modalCanvas = document.getElementById('modal-chart');
     if (!modalCanvas) return;
-
-    const modalContainer = modalCanvas.parentElement;
-    let modalListContainer = modalContainer.querySelector('.chart-list-container');
-
-    if (currentChartType === 'list') {
-        if (modalChartInstance) {
-            modalChartInstance.destroy();
-            modalChartInstance = null;
-        }
-        modalCanvas.style.display = 'none';
-        if (!modalListContainer) {
-            modalListContainer = document.createElement('div');
-            modalListContainer.className = 'chart-list-container';
-            modalListContainer.id = 'modal-list-container';
-            modalListContainer.style.height = '100%';
-            modalContainer.appendChild(modalListContainer);
-        }
-        modalListContainer.style.display = 'block';
-        modalListContainer.innerHTML = renderListHTML(config, config.chartData, currentRangeKey);
-        
-        modalOverlay.classList.add('active');
-        return;
-    } else {
-        modalCanvas.style.display = 'block';
-        if (modalListContainer) {
-            modalListContainer.style.display = 'none';
-        }
-    }
-
     const ctx = modalCanvas.getContext('2d');
     if (!ctx) return;
     
@@ -705,10 +608,12 @@ function openModal(key) {
         modalChartInstance.destroy();
     }
 
+    const activeType = currentChartType === 'list' ? 'line' : currentChartType;
+
     let modalDatasetOptions = { ...chartData.data.datasets[0] };
     modalDatasetOptions.data = [...chartData.data.datasets[0].data];
     
-    if (currentChartType === 'line') {
+    if (activeType === 'line') {
         modalDatasetOptions.borderWidth = 3;
         modalDatasetOptions.pointRadius = 0;
         modalDatasetOptions.pointHitRadius = 10;
@@ -727,7 +632,7 @@ function openModal(key) {
 
     // Clone the datasets and labels so it mirrors the small chart
     modalChartInstance = new Chart(ctx, {
-        type: currentChartType === 'candlestick' ? 'candlestick' : 'line',
+        type: activeType === 'candlestick' ? 'candlestick' : 'line',
         data: {
             datasets: [modalDatasetOptions]
         },
@@ -785,6 +690,7 @@ function setupCardClickListeners() {
 }
 
 async function initSingleChart(key) {
+    const activeType = currentChartType === 'list' ? 'line' : currentChartType;
     const config = indices[key];
     if (!config) {
         console.warn(`initSingleChart: no config found for key ${key}`);
@@ -880,42 +786,12 @@ async function initSingleChart(key) {
         }
     }
 
-    const container = canvas.parentElement;
-    let listContainer = container.querySelector('.chart-list-container');
-
-    if (currentChartType === 'list') {
-        if (charts[key]) {
-            charts[key].destroy();
-            charts[key] = null;
-        }
-        
-        canvas.style.display = 'none';
-        
-        if (!listContainer) {
-            listContainer = document.createElement('div');
-            listContainer.className = 'chart-list-container';
-            listContainer.id = `${config.elementId}-list-container`;
-            listContainer.style.height = '100%';
-            container.appendChild(listContainer);
-        }
-        listContainer.style.display = 'block';
-        listContainer.innerHTML = renderListHTML(config, allData, currentRangeKey);
-        
-        updateDOM(key, latestPrice, config.dailyPreviousClose);
-        return true;
-    } else {
-        canvas.style.display = 'block';
-        if (listContainer) {
-            listContainer.style.display = 'none';
-        }
-    }
-
     if (charts[key]) {
         charts[key].destroy();
     }
 
     let datasetOptions = {};
-    if (currentChartType === 'candlestick') {
+    if (activeType === 'candlestick') {
         const candleData = allData.map(d => ({
             x: d.time.valueOf(),
             o: d.o,
@@ -989,7 +865,7 @@ async function initSingleChart(key) {
     }
 
     charts[key] = new Chart(ctx, {
-        type: currentChartType === 'candlestick' ? 'candlestick' : 'line',
+        type: activeType === 'candlestick' ? 'candlestick' : 'line',
         data: {
             datasets: [datasetOptions]
         },
@@ -1020,6 +896,15 @@ async function initSingleChart(key) {
 
 // Initialize all charts
 async function initCharts() {
+    const container = document.querySelector('.dashboard-container');
+    if (container) {
+        if (currentChartType === 'list') {
+            container.classList.add('list-mode');
+        } else {
+            container.classList.remove('list-mode');
+        }
+    }
+
     // Restore saved search cards on load to guarantee they stay visible on refresh (e.g. CTRL-F5)
     await ensureKoreanStocks();
     let savedSearches = JSON.parse(localStorage.getItem('recent_searches')) || [];
@@ -1211,16 +1096,12 @@ function startRealtimeUpdates() {
                     modalChange.className = changeEl.className;
                 }
                 
-                if (currentChartType === 'list') {
-                    const modalListContainer = document.getElementById('modal-list-container');
-                    if (modalListContainer) {
-                        modalListContainer.innerHTML = renderListHTML(config, config.chartData, currentRangeKey);
-                    }
-                } else if (modalChartInstance && modalChartInstance.ctx && chart && chart.data && chart.data.datasets && chart.data.datasets[0] && chart.data.datasets[0].data &&
+                if (modalChartInstance && modalChartInstance.ctx && chart && chart.data && chart.data.datasets && chart.data.datasets[0] && chart.data.datasets[0].data &&
                     modalChartInstance.data && modalChartInstance.data.datasets && modalChartInstance.data.datasets[0]) {
                     modalChartInstance.data.datasets[0].data = [...chart.data.datasets[0].data];
                     
-                    if (currentChartType !== 'candlestick') {
+                    const activeType = currentChartType === 'list' ? 'line' : currentChartType;
+                    if (activeType !== 'candlestick') {
                         const modalCtx = modalChartInstance.ctx;
                         if (modalCtx) {
                             const modalGradient = modalCtx.createLinearGradient(0, 0, 0, 250);
@@ -2653,6 +2534,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             typeBtns.forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
             currentChartType = e.target.getAttribute('data-type');
+
+            const container = document.querySelector('.dashboard-container');
+            if (container) {
+                if (currentChartType === 'list') {
+                    container.classList.add('list-mode');
+                } else {
+                    container.classList.remove('list-mode');
+                }
+            }
 
             for (const key of Object.keys(indices)) {
                 if (document.getElementById(`${indices[key].elementId}-price`)) {
@@ -7875,6 +7765,7 @@ function appendScreenerRow(res) {
 }
 
 async function initExpertDetailChart(ticker) {
+    const activeType = currentChartType === 'list' ? 'line' : currentChartType;
     expertDetailTicker = ticker;
     const canvas = document.getElementById('expert-detail-chart');
     if (!canvas) return;
@@ -7960,40 +7851,12 @@ async function initExpertDetailChart(ticker) {
         }
     }
 
-    const container = canvas.parentElement;
-    let listContainer = container.querySelector('.chart-list-container');
-
-    if (currentChartType === 'list') {
-        if (expertDetailChartInstance) {
-            expertDetailChartInstance.destroy();
-            expertDetailChartInstance = null;
-        }
-        
-        canvas.style.display = 'none';
-        
-        if (!listContainer) {
-            listContainer = document.createElement('div');
-            listContainer.className = 'chart-list-container';
-            listContainer.id = 'expert-detail-list-container';
-            listContainer.style.height = '100%';
-            container.appendChild(listContainer);
-        }
-        listContainer.style.display = 'block';
-        listContainer.innerHTML = renderListHTML({ ticker: ticker, name: ticker }, allData, expertDetailChartRange);
-        return;
-    } else {
-        canvas.style.display = 'block';
-        if (listContainer) {
-            listContainer.style.display = 'none';
-        }
-    }
-
     const gradient = ctx.createLinearGradient(0, 0, 0, 250);
     gradient.addColorStop(0, activeBgColor);
     gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
     let datasetOptions = {};
-    if (currentChartType === 'candlestick') {
+    if (activeType === 'candlestick') {
         const candleData = allData.map(d => ({
             x: d.time.valueOf(),
             o: d.o,
@@ -8067,7 +7930,7 @@ async function initExpertDetailChart(ticker) {
     }
 
     expertDetailChartInstance = new Chart(ctx, {
-        type: currentChartType === 'candlestick' ? 'candlestick' : 'line',
+        type: activeType === 'candlestick' ? 'candlestick' : 'line',
         data: {
             datasets: [datasetOptions]
         },

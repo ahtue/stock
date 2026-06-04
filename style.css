@@ -3422,82 +3422,191 @@ body {
 }
 
 /* ──────────────────────────────────────
-   Chart List View & Table Styling
+   Dashboard Collapsed List Mode (Row Layout)
    ────────────────────────────────────── */
-.chart-list-view {
-    height: 100%;
-    overflow-y: auto;
-    background: rgba(0, 0, 0, 0.25);
-    border-radius: 12px;
-    padding: 0.75rem;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+.dashboard-container.list-mode {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.5rem 3rem;
 }
 
-.chart-list-view::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+.dashboard-container.list-mode .chart-card {
+    height: auto;
+    padding: 0.75rem 1.5rem;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 0.75rem;
 }
 
-.chart-list-view::-webkit-scrollbar-track {
-    background: transparent;
+.dashboard-container.list-mode .chart-card .chart-container {
+    display: none !important;
 }
 
-.chart-list-view::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+.dashboard-container.list-mode .chart-card .card-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 0 !important;
+}
+
+.dashboard-container.list-mode .chart-card .header-left {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1.25rem;
+    flex: 1;
+}
+
+.dashboard-container.list-mode .chart-card .header-left h2 {
+    font-size: 1.05rem;
+    margin: 0;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.dashboard-container.list-mode .chart-card .company-name {
+    font-size: 0.85rem;
+    margin: 0;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;
+    display: inline-block;
+}
+
+/* delimiter '/' prepended to company-name if visible */
+.dashboard-container.list-mode .chart-card .company-name::before {
+    content: "/";
+    margin-right: 1.25rem;
+    color: rgba(255, 255, 255, 0.15);
+}
+
+.dashboard-container.list-mode .chart-card .card-buttons-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 !important;
+}
+
+/* delimiter '/' prepended to card-buttons-row if visible */
+.dashboard-container.list-mode .chart-card .card-buttons-row::before {
+    content: "/";
+    margin-right: 1.25rem;
+    color: rgba(255, 255, 255, 0.15);
+}
+
+.dashboard-container.list-mode .chart-card .header-right {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+/* delimiter '/' prepended to header-right block */
+.dashboard-container.list-mode .chart-card .header-right::before {
+    content: "/";
+    margin-right: 1.25rem;
+    color: rgba(255, 255, 255, 0.15);
+}
+
+.dashboard-container.list-mode .chart-card .price-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+    text-align: right;
+}
+
+.dashboard-container.list-mode .chart-card .price {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+/* delimiter '/' after price */
+.dashboard-container.list-mode .chart-card .price::after {
+    content: "/";
+    margin-left: 1rem;
+    color: rgba(255, 255, 255, 0.15);
+}
+
+.dashboard-container.list-mode .chart-card .change {
+    font-size: 0.85rem;
+    padding: 0.2rem 0.5rem;
     border-radius: 4px;
+    display: inline-block;
 }
 
-.chart-list-view::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.25);
+/* delimiter '/' after price-container (before delete button) */
+.dashboard-container.list-mode .chart-card .price-container::after {
+    content: "/";
+    margin-left: 1.25rem;
+    color: rgba(255, 255, 255, 0.15);
 }
 
-.chart-list-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.8rem;
-    color: var(--text-primary, #fff);
+.dashboard-container.list-mode .chart-card .remove-chart-btn {
+    margin: 0 !important;
 }
 
-.chart-list-table th {
-    position: sticky;
-    top: 0;
-    background: #1e293b; /* Fallback solid color for overlapping elements */
-    background: rgba(30, 41, 59, 0.95);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    color: var(--text-secondary, #94a3b8);
-    font-weight: 600;
-    padding: 0.6rem 0.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    text-align: right;
-    z-index: 10;
-}
-
-.chart-list-table th:first-child {
-    text-align: left;
-}
-
-.chart-list-table td {
-    padding: 0.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    text-align: right;
-}
-
-.chart-list-table td:first-child {
-    text-align: left;
-    color: var(--text-secondary, #94a3b8);
-}
-
-.chart-list-table tr:hover {
-    background: rgba(255, 255, 255, 0.03);
-}
-
-/* Ensure chart list container occupies full space */
-.chart-list-container {
-    width: 100%;
-    height: 100%;
-    box-sizing: border-box;
+/* Mobile responsive fixes for collapsed row layout */
+@media (max-width: 768px) {
+    .dashboard-container.list-mode {
+        padding: 0.75rem !important;
+        gap: 0.5rem !important;
+    }
+    
+    .dashboard-container.list-mode .chart-card {
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+    }
+    
+    .dashboard-container.list-mode .chart-card .company-name {
+        display: none !important; /* Hide English name on mobile */
+    }
+    
+    .dashboard-container.list-mode .chart-card .card-buttons-row {
+        gap: 0.25rem;
+    }
+    
+    .dashboard-container.list-mode .chart-card .card-buttons-row button {
+        padding: 0.25rem 0.4rem !important;
+        font-size: 0.7rem !important;
+    }
+    
+    .dashboard-container.list-mode .chart-card .header-left {
+        gap: 0.5rem;
+    }
+    
+    .dashboard-container.list-mode .chart-card .header-left h2 {
+        font-size: 0.9rem;
+    }
+    
+    .dashboard-container.list-mode .chart-card .header-right {
+        gap: 0.5rem;
+    }
+    
+    .dashboard-container.list-mode .chart-card .price {
+        font-size: 0.9rem;
+    }
+    
+    .dashboard-container.list-mode .chart-card .change {
+        font-size: 0.75rem;
+        padding: 0.15rem 0.35rem;
+    }
+    
+    .dashboard-container.list-mode .chart-card .company-name::before,
+    .dashboard-container.list-mode .chart-card .card-buttons-row::before,
+    .dashboard-container.list-mode .chart-card .header-right::before,
+    .dashboard-container.list-mode .chart-card .price::after,
+    .dashboard-container.list-mode .chart-card .price-container::after {
+        margin-left: 0.4rem !important;
+        margin-right: 0.4rem !important;
+    }
 }
 
 
