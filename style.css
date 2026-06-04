@@ -3479,13 +3479,6 @@ body {
     display: inline-block;
 }
 
-/* delimiter '/' prepended to company-name if visible */
-.dashboard-container.list-mode .chart-card .company-name::before {
-    content: "/";
-    margin-right: 1.25rem;
-    color: rgba(255, 255, 255, 0.15);
-}
-
 .dashboard-container.list-mode .chart-card .card-buttons-row {
     display: flex;
     flex-direction: row;
@@ -3494,25 +3487,11 @@ body {
     margin: 0 !important;
 }
 
-/* delimiter '/' prepended to card-buttons-row if visible */
-.dashboard-container.list-mode .chart-card .card-buttons-row::before {
-    content: "/";
-    margin-right: 1.25rem;
-    color: rgba(255, 255, 255, 0.15);
-}
-
 .dashboard-container.list-mode .chart-card .header-right {
     display: flex;
     flex-direction: row;
     align-items: center;
     gap: 1.25rem;
-}
-
-/* delimiter '/' prepended to header-right block */
-.dashboard-container.list-mode .chart-card .header-right::before {
-    content: "/";
-    margin-right: 1.25rem;
-    color: rgba(255, 255, 255, 0.15);
 }
 
 .dashboard-container.list-mode .chart-card .price-container {
@@ -3528,25 +3507,11 @@ body {
     font-weight: 700;
 }
 
-/* delimiter '/' after price */
-.dashboard-container.list-mode .chart-card .price::after {
-    content: "/";
-    margin-left: 1rem;
-    color: rgba(255, 255, 255, 0.15);
-}
-
 .dashboard-container.list-mode .chart-card .change {
     font-size: 0.85rem;
     padding: 0.2rem 0.5rem;
     border-radius: 4px;
     display: inline-block;
-}
-
-/* delimiter '/' after price-container (before delete button) */
-.dashboard-container.list-mode .chart-card .price-container::after {
-    content: "/";
-    margin-left: 1.25rem;
-    color: rgba(255, 255, 255, 0.15);
 }
 
 .dashboard-container.list-mode .chart-card .remove-chart-btn {
@@ -3597,15 +3562,6 @@ body {
     .dashboard-container.list-mode .chart-card .change {
         font-size: 0.75rem;
         padding: 0.15rem 0.35rem;
-    }
-    
-    .dashboard-container.list-mode .chart-card .company-name::before,
-    .dashboard-container.list-mode .chart-card .card-buttons-row::before,
-    .dashboard-container.list-mode .chart-card .header-right::before,
-    .dashboard-container.list-mode .chart-card .price::after,
-    .dashboard-container.list-mode .chart-card .price-container::after {
-        margin-left: 0.4rem !important;
-        margin-right: 0.4rem !important;
     }
 }
 
