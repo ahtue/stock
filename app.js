@@ -9,7 +9,7 @@ window.onunhandledrejection = function (event) {
 
 // Global state for time range
 let currentRangeKey = '1d';
-let currentChartType = 'line'; // 'line' or 'candlestick'
+let currentChartType = 'line'; // 'line', 'candlestick', or 'list'
 const hasSavedLogin = localStorage.getItem('google_access_token') && localStorage.getItem('google_token_acquired_at') && (Date.now() - parseInt(localStorage.getItem('google_token_acquired_at'))) < 50 * 60 * 1000;
 let recentSearches = [];
 let cachedKoreanStocks = null;
@@ -350,7 +350,8 @@ window.retryChart = async function(key) {
         document.getElementById(`${config.elementId}-price`).textContent = 'Loading...';
     }
     await initSingleChart(key);
-    if (currentModalKey === key && modalChartInstance) {
+    const isModalOpen = document.getElementById('chart-modal').classList.contains('active');
+    if (currentModalKey === key && isModalOpen) {
         openModal(key);
     }
 };
@@ -554,6 +555,73 @@ function updateDOM(key, price, previousClose) {
     }
 }
 
+function renderListHTML(config, allData, rangeKey = currentRangeKey) {
+    if (!allData || allData.length === 0) {
+        return `<div class="chart-list-empty" style="text-align: center; color: var(--text-secondary); padding: 2rem;">No data available</div>`;
+    }
+
+    const ticker = config.ticker || '';
+    const isKrw = ticker.endsWith('.KS') || ticker.endsWith('.KQ') || ticker === '^KS11' || ticker === '^KQ11';
+    
+    // Sort descending (newest first)
+    const reversedData = [...allData].reverse();
+    const firstPoint = allData[0];
+    const startVal = firstPoint?.price !== undefined ? firstPoint.price : (firstPoint?.c !== undefined ? firstPoint.c : firstPoint);
+
+    let html = `
+        <div class="chart-list-view">
+            <table class="chart-list-table">
+                <thead>
+                    <tr>
+                        <th>일시</th>
+                        <th>종가</th>
+                        <th>대비</th>
+                        <th>고가</th>
+                        <th>저가</th>
+                        <th>거래량</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    for (const d of reversedData) {
+        const curVal = d.price !== undefined ? d.price : (d.c !== undefined ? d.c : d);
+        if (curVal === undefined || curVal === null) continue;
+        
+        const changeVal = curVal - startVal;
+        const pctChange = startVal !== 0 ? (changeVal / startVal) * 100 : 0;
+        const sign = changeVal >= 0 ? '+' : '';
+        const colorClass = changeVal > 0 ? 'positive' : (changeVal < 0 ? 'negative' : '');
+        const arrow = changeVal > 0 ? '▲' : (changeVal < 0 ? '▼' : '');
+        
+        const formattedPrice = formatPrice(curVal, isKrw, ticker);
+        const formattedHigh = d.h !== null && d.h !== undefined ? formatPrice(d.h, isKrw, ticker) : '-';
+        const formattedLow = d.l !== null && d.l !== undefined ? formatPrice(d.l, isKrw, ticker) : '-';
+        const formattedVolume = d.v !== null && d.v !== undefined ? new Intl.NumberFormat().format(d.v) : '-';
+        
+        const formattedTime = formatChartLabel(d.time || new Date(d.x || Date.now()), rangeKey);
+        
+        html += `
+            <tr>
+                <td>${formattedTime}</td>
+                <td style="font-weight: 600;">${formattedPrice}</td>
+                <td class="${colorClass}">${arrow} ${sign}${pctChange.toFixed(2)}%</td>
+                <td>${formattedHigh}</td>
+                <td>${formattedLow}</td>
+                <td>${formattedVolume}</td>
+            </tr>
+        `;
+    }
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    return html;
+}
+
 const neonColors = [
     { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
     { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
@@ -580,7 +648,8 @@ function openModal(key) {
     }
     const chartData = charts[key];
     
-    if (!chartData) return; // chart not ready
+    if (currentChartType !== 'list' && !chartData) return; // chart not ready
+    if (currentChartType === 'list' && !config.chartData) return; // data not ready
 
     const modalOverlay = document.getElementById('chart-modal');
     const koreanTitle = getKoreanName(config.ticker, config.companyName || config.name);
@@ -600,6 +669,35 @@ function openModal(key) {
 
     const modalCanvas = document.getElementById('modal-chart');
     if (!modalCanvas) return;
+
+    const modalContainer = modalCanvas.parentElement;
+    let modalListContainer = modalContainer.querySelector('.chart-list-container');
+
+    if (currentChartType === 'list') {
+        if (modalChartInstance) {
+            modalChartInstance.destroy();
+            modalChartInstance = null;
+        }
+        modalCanvas.style.display = 'none';
+        if (!modalListContainer) {
+            modalListContainer = document.createElement('div');
+            modalListContainer.className = 'chart-list-container';
+            modalListContainer.id = 'modal-list-container';
+            modalListContainer.style.height = '100%';
+            modalContainer.appendChild(modalListContainer);
+        }
+        modalListContainer.style.display = 'block';
+        modalListContainer.innerHTML = renderListHTML(config, config.chartData, currentRangeKey);
+        
+        modalOverlay.classList.add('active');
+        return;
+    } else {
+        modalCanvas.style.display = 'block';
+        if (modalListContainer) {
+            modalListContainer.style.display = 'none';
+        }
+    }
+
     const ctx = modalCanvas.getContext('2d');
     if (!ctx) return;
     
@@ -731,6 +829,7 @@ async function initSingleChart(key) {
     }
 
     const allData = apiResult.data;
+    config.chartData = allData;
     
     const latestPrice = allData[allData.length - 1].price;
     lastTimestamps[key] = allData[allData.length - 1].time.getTime();
@@ -778,6 +877,36 @@ async function initSingleChart(key) {
                 `;
                 headerLeftEl.insertAdjacentHTML('beforeend', buttonHtml);
             }
+        }
+    }
+
+    const container = canvas.parentElement;
+    let listContainer = container.querySelector('.chart-list-container');
+
+    if (currentChartType === 'list') {
+        if (charts[key]) {
+            charts[key].destroy();
+            charts[key] = null;
+        }
+        
+        canvas.style.display = 'none';
+        
+        if (!listContainer) {
+            listContainer = document.createElement('div');
+            listContainer.className = 'chart-list-container';
+            listContainer.id = `${config.elementId}-list-container`;
+            listContainer.style.height = '100%';
+            container.appendChild(listContainer);
+        }
+        listContainer.style.display = 'block';
+        listContainer.innerHTML = renderListHTML(config, allData, currentRangeKey);
+        
+        updateDOM(key, latestPrice, config.dailyPreviousClose);
+        return true;
+    } else {
+        canvas.style.display = 'block';
+        if (listContainer) {
+            listContainer.style.display = 'none';
         }
     }
 
@@ -1069,7 +1198,8 @@ function startRealtimeUpdates() {
             updateDOM(key, latestPoint.price, config.dailyPreviousClose);
             
             // If modal is open for this chart, update it too
-            if (currentModalKey === key && modalChartInstance && modalChartInstance.ctx) {
+            const isModalOpen = document.getElementById('chart-modal').classList.contains('active');
+            if (currentModalKey === key && isModalOpen) {
                 const modalPrice = document.getElementById('modal-price');
                 const modalChange = document.getElementById('modal-change');
                 const priceEl = document.getElementById(`${config.elementId}-price`);
@@ -1081,7 +1211,12 @@ function startRealtimeUpdates() {
                     modalChange.className = changeEl.className;
                 }
                 
-                if (chart.data && chart.data.datasets && chart.data.datasets[0] && chart.data.datasets[0].data &&
+                if (currentChartType === 'list') {
+                    const modalListContainer = document.getElementById('modal-list-container');
+                    if (modalListContainer) {
+                        modalListContainer.innerHTML = renderListHTML(config, config.chartData, currentRangeKey);
+                    }
+                } else if (modalChartInstance && modalChartInstance.ctx && chart && chart.data && chart.data.datasets && chart.data.datasets[0] && chart.data.datasets[0].data &&
                     modalChartInstance.data && modalChartInstance.data.datasets && modalChartInstance.data.datasets[0]) {
                     modalChartInstance.data.datasets[0].data = [...chart.data.datasets[0].data];
                     
@@ -2504,7 +2639,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.getElementById(`${indices[key].elementId}-price`).textContent = 'Loading...';
                 }
                 initSingleChart(key).then(() => {
-                    if (currentModalKey === key && modalChartInstance) openModal(key);
+                    const isModalOpen = document.getElementById('chart-modal').classList.contains('active');
+                    if (currentModalKey === key && isModalOpen) openModal(key);
                 });
                 await sleep(400);
             }
@@ -2523,7 +2659,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.getElementById(`${indices[key].elementId}-price`).textContent = 'Loading...';
                 }
                 initSingleChart(key).then(() => {
-                    if (currentModalKey === key && modalChartInstance) openModal(key);
+                    const isModalOpen = document.getElementById('chart-modal').classList.contains('active');
+                    if (currentModalKey === key && isModalOpen) openModal(key);
                 });
                 await sleep(100);
             }
@@ -7820,6 +7957,34 @@ async function initExpertDetailChart(ticker) {
         } else {
             const zeroText = isKRW ? '0' : '0.00';
             expertChangeEl.innerHTML = `${zeroText} (0.00%)`;
+        }
+    }
+
+    const container = canvas.parentElement;
+    let listContainer = container.querySelector('.chart-list-container');
+
+    if (currentChartType === 'list') {
+        if (expertDetailChartInstance) {
+            expertDetailChartInstance.destroy();
+            expertDetailChartInstance = null;
+        }
+        
+        canvas.style.display = 'none';
+        
+        if (!listContainer) {
+            listContainer = document.createElement('div');
+            listContainer.className = 'chart-list-container';
+            listContainer.id = 'expert-detail-list-container';
+            listContainer.style.height = '100%';
+            container.appendChild(listContainer);
+        }
+        listContainer.style.display = 'block';
+        listContainer.innerHTML = renderListHTML({ ticker: ticker, name: ticker }, allData, expertDetailChartRange);
+        return;
+    } else {
+        canvas.style.display = 'block';
+        if (listContainer) {
+            listContainer.style.display = 'none';
         }
     }
 

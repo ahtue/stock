@@ -3421,6 +3421,85 @@ body {
     animation: spin 1.2s linear infinite;
 }
 
+/* ──────────────────────────────────────
+   Chart List View & Table Styling
+   ────────────────────────────────────── */
+.chart-list-view {
+    height: 100%;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 12px;
+    padding: 0.75rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.chart-list-view::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.chart-list-view::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.chart-list-view::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.chart-list-view::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.chart-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    color: var(--text-primary, #fff);
+}
+
+.chart-list-table th {
+    position: sticky;
+    top: 0;
+    background: #1e293b; /* Fallback solid color for overlapping elements */
+    background: rgba(30, 41, 59, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--text-secondary, #94a3b8);
+    font-weight: 600;
+    padding: 0.6rem 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: right;
+    z-index: 10;
+}
+
+.chart-list-table th:first-child {
+    text-align: left;
+}
+
+.chart-list-table td {
+    padding: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    text-align: right;
+}
+
+.chart-list-table td:first-child {
+    text-align: left;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.chart-list-table tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Ensure chart list container occupies full space */
+.chart-list-container {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+}
+
 
 
 
